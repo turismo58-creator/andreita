@@ -1,10 +1,15 @@
-Música opcional
-===============
+Audio opcional
+==============
 
-Añade aquí un archivo llamado background-music.mp3 si quieres acompañar la
-experiencia con música. El sitio seguirá funcionando si el archivo no existe.
+Esta carpeta admite dos archivos locales proporcionados por el propietario:
 
-Se recomienda una pista instrumental suave, comprimida para web y con un
-volumen master moderado. La música solo se inicia desde el control de audio,
-después de una interacción de la persona visitante.
+- yellow.mp3: pista musical principal ("Yellow", de Coldplay).
+- joseph-voz.mp3: nota de voz opcional de Joseph.
 
+Ninguno se incluye, descarga, transforma ni redistribuye desde este proyecto.
+La experiencia funciona completa si falta uno o ambos archivos.
+
+La música solo comienza cuando la persona visitante toca el control de sonido.
+El código ajusta su volumen de forma narrativa y la silencia mientras se
+reproduce la nota de voz. Usa archivos comprimidos para web y evita un volumen
+master demasiado alto.

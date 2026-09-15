@@ -5,8 +5,6 @@ Puedes añadir aquí estas fotografías, conservando exactamente sus nombres:
 
 - foto-1.jpg: aparece detrás del cristal empañado.
 - foto-2.jpg: puede integrarse sutilmente en el lienzo del paisaje.
-- foto-especial.jpg: aparece en la pausa de los recuerdos.
 
-No son obligatorias. Si falta cualquiera de ellas, la experiencia usa una
+No son obligatorias. Si falta alguna de ellas, la experiencia usa una
 composición pictórica propia y continúa funcionando sin imágenes rotas.
-

@@ -1,0 +1,10 @@
+# Local browser profiles and visual QA artifacts
+.qa-profile*/
+qa-frame.html
+qa-*.html
+qa-*.png
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+
