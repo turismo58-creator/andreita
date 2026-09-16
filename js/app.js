@@ -47,12 +47,13 @@
         field: 0.25,
         letter: 0.17,
         final: 0.26,
+        cliff: 0.055,
         epilogue: 0.21
       }
     },
     timings: {
       transition: 1800,
-      awakening: 6500,
+      awakening: 5600,
       introStarWake: 900,
       nightBurst: 2000,
       resultDelay: 2000,
@@ -67,11 +68,12 @@
       growthVisual: 4300,
       growthObserve: 2500,
       fieldObserve: 2500,
-      postBeat: 1900,
+      postBeat: 1800,
       beatTransition: 1100,
       loveWord: 3000,
       loveEcho: 1500,
       loveEchoObserve: 2500,
+      cliffExit: 3000,
       voiceSilence: 1600,
       voiceProbe: 1800,
       focus: 90
@@ -216,6 +218,30 @@
         page(['Más sincero.', 'Más intenso.', 'Más verdadero.'], { hold: 3900 }),
         page(['Sin miedo.', 'Sin orgullo.', 'Simplemente dejándonos sentir.'], { hold: 4300 })
       ],
+      cliff: [
+        page([line('Andrea…', 'narrative-line--address')], { postBeatDelay: 2800 }),
+        page(['De verdad lo siento.', 'Lo siento por tanto.']),
+        page(['Y lo siento por esa cagada que terminó haciendo que tantas cosas se desmoronaran.']),
+        page(['No lo digo para justificarme.', 'Ni para pedirte que olvides todo de un momento a otro.']),
+        page(['Solo necesitaba decírtelo otra vez.']),
+        page(['Porque sí me duele…', 'me duele cómo se han dado las cosas.']),
+        page(['Y me duele pensar que algo tan bonito entre nosotros haya terminado tan herido.']),
+        page(['Yo sé que no soy perfecto.', 'Y sé que fallé.']),
+        page(['Pero también quiero que sepas algo que sí es verdad.']),
+        page([line('Te quiero.', 'narrative-line--statement cliff-emphasis')], { effect: 'presence', postBeatDelay: 3800 }),
+        page([line('Te quiero de verdad.', 'narrative-line--statement cliff-emphasis')], { postBeatDelay: 3000 }),
+        page(['Y ojalá algún día puedas perdonarme.']),
+        page(['Aunque esa herida…', '…solo el tiempo sabrá hasta dónde puede sanar.']),
+        page(['Sí.', 'Me duele mil y una noches.'], { postBeatDelay: 3000 }),
+        page(['Pero incluso con ese dolor…', 'no quiero presionarte.']),
+        page(['No quiero hostigarte.', 'No quiero exigirte que sientas algo por mí.']),
+        page(['Solo quería que supieras que mi perdón es sincero…', '…y que mi cariño por ti también.']),
+        page(['Si algún día algo vuelve a florecer…', '…quiero que sea libre.']),
+        page(['…verdadero.', '…y más bonito que antes.']),
+        page(['Y si el tiempo me concede esa posibilidad…', '…ojalá algún día pueda volver a encontrarme contigo en un lugar más sano, más fuerte y más verdadero.']),
+        page(['Mientras tanto…'], { postBeatDelay: 2600 }),
+        page(['solo quería mirarte una vez más,', 'aunque fuera así,', 'entre la noche, el mar y las estrellas.'], { effect: 'last-look', postBeatDelay: 4000 })
+      ],
       epilogue: [
         page(['Y si algún día vuelve el amor…'], { hold: 3500 }),
         page([line('…ojalá nos encuentre siendo mejores para vivirlo. 🌻', 'narrative-line--statement narrative-line--accent')], { hold: 4600 })
@@ -302,6 +328,10 @@
     finalParticles: byId('final-particles'),
     finalNext: byId('final-next'),
     returningSunflower: byId('returning-sunflower'),
+    cliffNext: byId('cliff-next'),
+    cliffBreeze: byId('cliff-breeze'),
+    cliffRelease: byId('cliff-release'),
+    cliffPresence: byId('cliff-presence'),
     replay: byId('replay-story'),
     score: byId('background-music'),
     audioControl: byId('audio-control'),
@@ -329,12 +359,13 @@
       this.scopes = new Map();
       this.profiles = {
         normal: { multiplier: 1, wpm: 145, minimum: 2400 },
-        intimate: { multiplier: 1.2, wpm: 140, minimum: 2600 },
-        emotional: { multiplier: 1.35, wpm: 135, minimum: 2800 },
-        confession: { multiplier: 1.55, wpm: 130, minimum: 3000 },
-        dawn: { multiplier: 1.25, wpm: 140, minimum: 2700 },
-        letter: { multiplier: 1.25, wpm: 135, minimum: 2800 },
-        final: { multiplier: 1.5, wpm: 130, minimum: 3200 }
+        intimate: { multiplier: 1.15, wpm: 145, minimum: 2500 },
+        emotional: { multiplier: 1.3, wpm: 140, minimum: 2700 },
+        confession: { multiplier: 1.45, wpm: 135, minimum: 2900 },
+        contemplative: { multiplier: 1.25, wpm: 142, minimum: 2600 },
+        dawn: { multiplier: 1.25, wpm: 142, minimum: 2600 },
+        letter: { multiplier: 1.05, wpm: 145, minimum: 2400 },
+        final: { multiplier: 1.35, wpm: 138, minimum: 2900 }
       };
     }
 
@@ -610,6 +641,7 @@
     field: 'Flores amarillas',
     letter: 'Una carta para Andrea',
     final: 'Seguir conquistándote',
+    cliff: 'Entre la noche y el mar',
     epilogue: 'Un girasol antes del amanecer. Para Andrea.'
   };
 
@@ -772,22 +804,32 @@
       const lines = this.preparePage(pageData);
       if (typeof this.onPage === 'function') this.onPage(index, pageData);
       const mood = pageData.mood || this.mood;
-      const revealed = await narrativePacer.revealSequence(lines, {
-        mood,
-        lineHolds: pageData.lineHolds,
-        sceneName: this.sceneName,
-        signal: this.controller && this.controller.signal,
-        beforeReveal: (element) => {
+      let revealed = true;
+      if (pageData.revealTogether) {
+        lines.forEach((element) => {
           element.removeAttribute('aria-hidden');
           void element.offsetWidth;
-        }
-      });
+          element.classList.add('is-visible');
+        });
+      } else {
+        revealed = await narrativePacer.revealSequence(lines, {
+          mood,
+          lineHolds: pageData.lineHolds,
+          sceneName: this.sceneName,
+          signal: this.controller && this.controller.signal,
+          beforeReveal: (element) => {
+            element.removeAttribute('aria-hidden');
+            void element.offsetWidth;
+          }
+        });
+      }
       if (!revealed || !this.active || token !== this.token) return;
       this.output.setAttribute('aria-busy', 'false');
       const last = index === this.pages.length - 1;
       const finalLine = pageData.lines[pageData.lines.length - 1];
-      const finalOverride = Array.isArray(pageData.lineHolds) ? pageData.lineHolds[pageData.lines.length - 1] : undefined;
-      let pause = narrativePacer.calculateReadingTime(finalLine && finalLine.text, mood, finalOverride) + this.postBeatDelay;
+      /* El último texto permanece en pantalla. El control aparece después de
+         una respiración breve; nunca obliga a continuar. */
+      let pause = this.postBeatDelay;
       if (pageData.effect === 'echoes') {
         const echoLead = narrativePacer.calculateReadingTime(finalLine && finalLine.text, 'intimate');
         pause = Math.max(pause, echoLead + LOVE_ECHOES.length * CONFIG.timings.loveEcho + CONFIG.timings.loveEchoObserve);
@@ -1636,6 +1678,9 @@
       retainWhileFits: true
     });
     registerGuidedSequence('final', dom.finalNext, 'final');
+    registerGuidedSequence('cliff', dom.cliffNext, 'contemplative', {
+      finalLabel: 'Mirar el cielo'
+    });
     registerGuidedSequence('epilogue', dom.replay, 'intimate');
   }
 
@@ -1650,13 +1695,13 @@
     const declaration = page([
       ...beats[6].lines,
       ...beats[7].lines
-    ], { mood: 'confession', lineHolds: [3000], postBeatDelay: 4000 });
+    ], { mood: 'confession', lineHolds: [3000], postBeatDelay: 3500 });
     beats.splice(6, 2, declaration);
-    beats[0].postBeatDelay = 3100;
-    beats[1].postBeatDelay = 4700;
-    beats[2].postBeatDelay = 5600;
+    beats[0].postBeatDelay = 2800;
+    beats[1].postBeatDelay = 4200;
+    beats[2].postBeatDelay = 5000;
     const humanBeat = beats.find((item) => item.lines.some((entry) => entry.text === 'Probablemente mil y una noches.'));
-    if (humanBeat) humanBeat.postBeatDelay = 4800;
+    if (humanBeat) humanBeat.postBeatDelay = 3600;
     return beats;
   }
 
@@ -1665,11 +1710,35 @@
       text: entry.text,
       className: entry.className || ''
     })));
-    const chunkSize = window.innerHeight <= 900 ? 2 : 3;
     const beats = [];
-    for (let index = 0; index < lines.length; index += chunkSize) {
-      beats.push(page(lines.slice(index, index + chunkSize), { mood: 'letter' }));
-    }
+    const maximumLines = window.innerHeight < 650 ? 2 : 3;
+    const maximumWords = window.innerHeight < 650 ? 24 : 30;
+    let block = [];
+    let blockWords = 0;
+    let blockCharacters = 0;
+    const pushBlock = () => {
+      if (!block.length) return;
+      beats.push(page(block, {
+        mood: 'letter',
+        revealTogether: true
+      }));
+      block = [];
+      blockWords = 0;
+      blockCharacters = 0;
+    };
+    lines.forEach((entry) => {
+      const words = entry.text.trim().split(/\s+/).filter(Boolean).length;
+      const wouldOverflow = block.length && (
+        block.length >= maximumLines
+        || blockWords + words > maximumWords
+        || blockCharacters + entry.text.length > 300
+      );
+      if (wouldOverflow) pushBlock();
+      block.push(entry);
+      blockWords += words;
+      blockCharacters += entry.text.length;
+    });
+    pushBlock();
     return beats;
   }
 
@@ -1733,6 +1802,32 @@
         }
         if (dom.letterHint) dom.letterHint.textContent = 'La carta es tuya.';
       }
+    });
+  }
+
+  function releaseCliff() {
+    const scene = byId('scene-cliff');
+    if (!currentIs('cliff') || !scene || scene.classList.contains('is-releasing')) return;
+    scene.classList.add('is-releasing');
+    setReady(dom.cliffNext, false);
+    makeParticles(dom.cliffRelease, reducedMotion ? 10 : 24, 'cliff-release__particle', 271828);
+    announce('La silueta se convierte lentamente en pequeñas estrellas.');
+    schedule(() => {
+      if (currentIs('cliff')) sceneManager.transitionToScene('epilogue');
+    }, CONFIG.timings.cliffExit, 'cinematic');
+  }
+
+  function startCliffSequence() {
+    const scene = byId('scene-cliff');
+    scene?.classList.remove('is-releasing', 'is-presence-bright', 'is-last-look');
+    startGuidedSequence('cliff', CONFIG.sequences.cliff, {
+      startDelay: 1400,
+      mood: 'contemplative',
+      onPage: (index, pageData) => {
+        if (pageData.effect === 'presence') scene?.classList.add('is-presence-bright');
+        if (pageData.effect === 'last-look') scene?.classList.add('is-last-look');
+      },
+      onFinalControl: releaseCliff
     });
   }
 
@@ -1953,6 +2048,9 @@
         startDelay: 1200,
         mood: 'final'
       });
+    } else if (name === 'cliff') {
+      makeParticles(dom.cliffBreeze, reducedMotion ? 7 : 16, 'cliff-breeze__particle', 314159);
+      startCliffSequence();
     } else if (name === 'epilogue') {
       scene?.classList.add('is-awake');
       startGuidedSequence('epilogue', CONFIG.sequences.epilogue, {
@@ -2019,7 +2117,7 @@
       scene.classList.remove(
         'is-complete', 'is-growing', 'is-grown', 'is-awake', 'is-star-touched',
         'is-declaration', 'is-human', 'is-echoing', 'is-warming', 'is-star-ready',
-        'is-awakening', 'is-leaving'
+        'is-awakening', 'is-leaving', 'is-releasing', 'is-presence-bright', 'is-last-look'
       );
     });
 
@@ -2129,6 +2227,9 @@
     if (dom.finalParticles) dom.finalParticles.replaceChildren();
     dom.returningSunflower?.classList.remove('is-visible');
     setReady(dom.finalNext, false);
+    if (dom.cliffBreeze) dom.cliffBreeze.replaceChildren();
+    if (dom.cliffRelease) dom.cliffRelease.replaceChildren();
+    setReady(dom.cliffNext, false);
     setReady(dom.replay, false);
 
     if (experience) {
@@ -2456,6 +2557,18 @@
     if (letterBeats().some((beat) => beat.lines.length < 1 || beat.lines.length > 3)) {
       throw new Error('Letter beat normalization failed');
     }
+    const beatWordCount = (beat) => beat.lines.reduce((total, entry) => (
+      total + entry.text.trim().split(/\s+/).filter(Boolean).length
+    ), 0);
+    if (letterBeats().some((beat) => beatWordCount(beat) > (window.innerHeight < 650 ? 24 : 30))) {
+      throw new Error('Letter beat reading-size invariant failed');
+    }
+    if (CONFIG.sequences.cliff.some((beat) => beat.lines.length < 1 || beat.lines.length > 3)) {
+      throw new Error('Cliff beat normalization failed');
+    }
+    if (CONFIG.sequences.cliff.some((beat) => beatWordCount(beat) > 30)) {
+      throw new Error('Cliff beat reading-size invariant failed');
+    }
 
     await waitFor(() => ready(dom.introStar), 'intro star');
     dom.introStar.click();
@@ -2528,6 +2641,9 @@
     await waitFor(() => inScene('final'), 'final scene');
     await advanceGuidedScene('final', dom.finalNext, CONFIG.sequences.final.length + 2);
 
+    await waitFor(() => inScene('cliff'), 'cliff scene');
+    await advanceGuidedScene('cliff', dom.cliffNext, CONFIG.sequences.cliff.length + 2);
+
     await waitFor(() => inScene('epilogue'), 'epilogue scene');
     for (let turn = 0; turn < CONFIG.sequences.epilogue.length - 1; turn += 1) {
       await waitFor(() => ready(dom.replay), `epilogue beat ${turn + 1}`);
@@ -2546,7 +2662,7 @@
   }
 
   function init() {
-    if (!experience || sceneElements.length !== 16) throw new Error(`Se esperaban 16 escenas y se encontraron ${sceneElements.length}.`);
+    if (!experience || sceneElements.length !== 17) throw new Error(`Se esperaban 17 escenas y se encontraron ${sceneElements.length}.`);
     setupManualSequences();
     setupOptionalImages();
     audioController = new AudioController({
