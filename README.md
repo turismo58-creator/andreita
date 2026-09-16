@@ -1,9 +1,10 @@
 # Un girasol antes del amanecer
 
 Experiencia web interactiva y cinematográfica para Andrea, construida con
-HTML, CSS, SVG, Canvas y JavaScript vanilla. La historia recorre tres actos:
-La noche, La verdad y El amanecer, y termina con un epílogo nocturno frente
-al mar. No requiere instalación, compilación ni dependencias de producción.
+HTML, CSS, SVG, Canvas y JavaScript vanilla. La historia está condensada en
+ocho momentos: misterio, recuerdo, reconocimiento, responsabilidad,
+confesión, esperanza, declaración y un epílogo nocturno frente al mar. No
+requiere instalación, compilación ni dependencias de producción.
 
 ## Ver en local
 
@@ -23,6 +24,9 @@ Cloudflare Pages o un Worker configurado con Static Assets.
 - Los textos secuenciales y la carta están centralizados en `js/app.js`.
 - `NarrativePacer` concentra los perfiles de lectura, pausas y cancelación de
   tiempos al cambiar de escena.
+- La carta forma parte del momento de las flores; no es una escena adicional.
+- `?test=1` recorre automáticamente los ocho momentos para una comprobación
+  funcional rápida.
 - Las fotografías opcionales se documentan en `assets/images/README.txt`.
 - La música opcional se documenta en `assets/audio/README.txt`.
 
