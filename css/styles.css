@@ -33,7 +33,14 @@
   --content-width: 42rem;
   --ease-out: cubic-bezier(.22, 1, .36, 1);
   --ease-in-out: cubic-bezier(.65, 0, .35, 1);
-  --scene-time: 900ms;
+  /* Narrative motion stays intentionally unhurried. Reading pauses live in JS. */
+  --scene-time: 1800ms;
+  --text-enter-time: 1150ms;
+  --text-enter-distance: .375rem;
+  --control-enter-time: 1050ms;
+  --control-enter-distance: .3rem;
+  /* Two calm veil halves live inside the 1800ms scene lock. */
+  --veil-time: 850ms;
   --dawn-progress: 0;
   --reveal-progress: 0;
   --story-progress: 0;
@@ -367,14 +374,14 @@ canvas {
   height: 100%;
   padding: calc(var(--safe-top) + 3rem) max(var(--page-gutter), var(--safe-left)) calc(var(--safe-bottom) + 1.2rem) max(var(--page-gutter), var(--safe-right));
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   overscroll-behavior: contain;
   scrollbar-width: none;
   background: transparent;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: scale(1.008) translate3d(0, .55rem, 0);
+  transform: scale(1.004) translate3d(0, .35rem, 0);
   transition:
     opacity var(--scene-time) var(--ease-in-out),
     transform var(--scene-time) var(--ease-out),
@@ -406,7 +413,7 @@ canvas {
   opacity: 0;
   visibility: visible;
   pointer-events: none;
-  transform: scale(.994);
+  transform: scale(.997);
 }
 
 .experience.is-transitioning .scene,
@@ -529,17 +536,49 @@ html[data-transitioning="true"] .scene {
 
 .reveal-copy,
 .narrative-stage__copy > *,
-[data-sequence-output] > * {
+[data-sequence-output] > *,
+.narrative-line {
   opacity: 0;
-  transform: translate3d(0, .55rem, 0);
-  transition: opacity .9s var(--ease-out), transform 1s var(--ease-out);
+  filter: blur(3px);
+  transform: translate3d(0, var(--text-enter-distance), 0);
+  transition:
+    opacity var(--text-enter-time) ease,
+    transform var(--text-enter-time) var(--ease-out),
+    filter var(--text-enter-time) ease;
 }
 
 .reveal-copy.is-visible,
 .narrative-stage__copy > .is-visible,
 [data-sequence-output] > .is-visible,
-.narrative-stage__copy.is-visible {
+.narrative-stage__copy.is-visible,
+.narrative-line.is-visible {
   opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+/* The page is only a stable layout wrapper; each line owns its reveal. */
+.narrative-page,
+.narrative-page.is-visible {
+  opacity: 1;
+  filter: none;
+  transform: none;
+  transition: none;
+}
+
+.letter-paragraph {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translate3d(0, var(--text-enter-distance), 0);
+  transition:
+    opacity var(--text-enter-time) ease,
+    transform var(--text-enter-time) var(--ease-out),
+    filter var(--text-enter-time) ease;
+}
+
+.letter-paragraph.is-visible {
+  opacity: 1;
+  filter: none;
   transform: none;
 }
 
@@ -597,12 +636,13 @@ html[data-transitioning="true"] .scene {
   font-size: clamp(.82rem, 2.9vw, .92rem);
   font-weight: 500;
   letter-spacing: .02em;
+  visibility: visible;
   transition:
-    opacity .5s ease,
-    visibility .5s ease,
-    transform .28s var(--ease-out),
-    border-color .28s ease,
-    background .28s ease;
+    opacity var(--control-enter-time) ease,
+    visibility 0s linear 0s,
+    transform var(--control-enter-time) var(--ease-out),
+    border-color .6s ease,
+    background .6s ease;
 }
 
 .scene-button:hover,
@@ -635,7 +675,13 @@ html[data-transitioning="true"] .scene {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translateY(.4rem);
+  transform: translateY(var(--control-enter-distance));
+  transition:
+    opacity var(--control-enter-time) ease,
+    visibility 0s linear var(--control-enter-time),
+    transform var(--control-enter-time) var(--ease-out),
+    border-color .6s ease,
+    background .6s ease;
 }
 
 .scene-button.is-ready,
@@ -756,7 +802,11 @@ html[data-transitioning="true"] .scene {
   min-width: 0;
   justify-items: center;
   gap: .7rem;
-  transition: opacity .8s ease, transform .9s var(--ease-out);
+  filter: none;
+  transition:
+    opacity var(--text-enter-time) ease,
+    transform var(--text-enter-time) var(--ease-out),
+    filter var(--text-enter-time) ease;
 }
 
 .intro-copy .display-title {
@@ -767,8 +817,9 @@ html[data-transitioning="true"] .scene {
 .intro-copy.is-hidden,
 .scene--intro.is-star-touched .intro-copy {
   opacity: 0;
+  filter: blur(3px);
   visibility: hidden;
-  transform: translateY(-.7rem);
+  transform: translateY(calc(var(--text-enter-distance) * -1));
 }
 
 .intro-stage,
@@ -1281,6 +1332,14 @@ html[data-transitioning="true"] .scene {
   align-content: center;
 }
 
+/* Manual confession beats keep a calm, fixed stage instead of jumping in height. */
+.truth-stage .narrative-stage__copy {
+  width: 100%;
+  height: min(31vh, 15rem);
+  min-height: 10.5rem;
+  align-content: center;
+}
+
 .truth-copy > * {
   max-width: 29ch;
   color: #f4efe7;
@@ -1320,8 +1379,13 @@ html[data-transitioning="true"] .scene {
 
 .love-word span {
   opacity: 0;
-  transform: translateY(.7rem);
-  animation: letterAppear .9s var(--ease-out) calc(.25s + var(--i, 0) * .18s) forwards;
+  filter: blur(3px);
+  transform: translateY(var(--text-enter-distance));
+  animation: none;
+}
+
+.scene--love.is-active .love-word span {
+  animation: letterAppear var(--text-enter-time) var(--ease-out) calc(.35s + var(--i, 0) * .14s) both;
 }
 
 .love-word span:nth-child(1) { --i: 0; }
@@ -1346,10 +1410,20 @@ html[data-transitioning="true"] .scene {
   font-size: clamp(.77rem, 2.8vw, 1rem);
   line-height: 1.15;
   opacity: 0;
-  transform: translateY(.5rem);
-  animation: echoAppear 1.2s var(--ease-out) calc(1.2s + var(--i) * .34s) forwards;
+  filter: blur(3px);
+  transform: translateY(var(--text-enter-distance));
+  transition:
+    opacity 1200ms ease,
+    transform 1250ms var(--ease-out),
+    filter 1200ms ease;
   text-align: center;
   text-wrap: balance;
+}
+
+.love-echoes > span.is-visible {
+  opacity: .52;
+  filter: none;
+  transform: none;
 }
 
 .love-warmth {
@@ -1397,7 +1471,7 @@ html[data-transitioning="true"] .scene {
   align-content: center;
 }
 
-/* Threshold: 5.2 second earned dawn */
+/* Threshold: a 6.5 second, fully observed passage into dawn. */
 
 .scene--threshold {
   overflow: hidden;
@@ -1585,32 +1659,32 @@ html[data-transitioning="true"] .scene {
 
 .scene--threshold.is-awakening .awakening-layer--ripple,
 .awakening-stage.is-awakening .awakening-layer--ripple {
-  animation: awakeningRipple .75s var(--ease-out) both;
+  animation: awakeningRipple 1.5s var(--ease-out) both;
 }
 
 .scene--threshold.is-awakening .awakening-layer--horizon,
 .awakening-stage.is-awakening .awakening-layer--horizon {
-  animation: awakeningHorizon 3s var(--ease-in-out) 2s both;
+  animation: awakeningHorizon 2s var(--ease-in-out) 3s both;
 }
 
 .scene--threshold.is-awakening .awakening-layer--stars > i,
 .awakening-stage.is-awakening .awakening-layer--stars > i {
-  animation: awakeningStar 1.2s var(--ease-out) calc(.8s + var(--i) * .32s) both;
+  animation: awakeningStar 1.4s var(--ease-out) calc(4s + var(--i) * .22s) both;
 }
 
 .scene--threshold.is-awakening .awakening-layer--brushes > i,
 .awakening-stage.is-awakening .awakening-layer--brushes > i {
-  animation: awakeningBrush 1.65s var(--ease-out) calc(.35s + var(--i) * .42s) both;
+  animation: awakeningBrush 2s var(--ease-out) calc(1s + var(--i) * .12s) both;
 }
 
 .scene--threshold.is-awakening .awakening-layer--particles,
 .awakening-stage.is-awakening .awakening-layer--particles {
-  animation: awakeningParticles 2.1s ease 3s both;
+  animation: awakeningParticles 2s ease 4.5s both;
 }
 
 .scene--threshold.is-awakening .threshold-star,
 .awakening-stage.is-awakening .threshold-star {
-  animation: thresholdLift 5.2s var(--ease-in-out) both;
+  animation: thresholdLift 6.5s var(--ease-in-out) both;
 }
 
 /* Act III: dawn */
@@ -2151,21 +2225,18 @@ html[data-transitioning="true"] .scene {
 .letter-sheet__body {
   max-height: calc(min(70vh, 38rem) - 8.5rem);
   padding: .2rem .35rem .2rem 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-color: rgba(83, 57, 28, .45) transparent;
-  scrollbar-width: thin;
+  overflow: hidden;
+  overscroll-behavior: none;
   color: #2d2822;
   font-family: var(--font-display);
   font-size: clamp(1rem, 3.7vw, 1.2rem);
   line-height: 1.44;
   text-align: left;
-  -webkit-overflow-scrolling: touch;
+  transition: opacity var(--text-enter-time) ease;
 }
 
 .letter-sheet__body > * {
-  margin-bottom: .8em;
+  margin-bottom: .58em;
 }
 
 .letter-sheet__body.is-changing {
@@ -2180,7 +2251,9 @@ html[data-transitioning="true"] .scene {
   font-style: italic;
   opacity: 0;
   transform: translateY(.35rem);
-  transition: .7s var(--ease-out);
+  transition:
+    opacity var(--text-enter-time) ease,
+    transform var(--text-enter-time) var(--ease-out);
   text-align: right;
 }
 
@@ -2200,7 +2273,9 @@ html[data-transitioning="true"] .scene {
   border-radius: 50%;
   opacity: 0;
   transform: rotate(-9deg) scale(.5);
-  transition: .8s var(--ease-out);
+  transition:
+    opacity var(--text-enter-time) ease,
+    transform var(--text-enter-time) var(--ease-out);
 }
 
 .letter-sheet__mark.is-visible {
@@ -2272,7 +2347,9 @@ html[data-transitioning="true"] .scene {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity .62s var(--ease-in-out), visibility 0s linear .62s;
+  transition:
+    opacity var(--veil-time) var(--ease-in-out),
+    visibility 0s linear var(--veil-time);
 }
 
 .transition-veil::before,
@@ -2289,7 +2366,9 @@ html[data-transitioning="true"] .scene {
   content: "";
   opacity: 0;
   transform: translateX(-14%) rotate(-8deg) scale(.84);
-  transition: opacity .48s ease, transform .88s var(--ease-out);
+  transition:
+    opacity 760ms ease,
+    transform var(--veil-time) var(--ease-out);
 }
 
 .transition-veil::before { top: 3%; }
@@ -2355,13 +2434,7 @@ html[data-transitioning="true"] .scene {
 }
 
 @keyframes letterAppear {
-  to { opacity: 1; transform: none; }
-}
-
-@keyframes echoAppear {
-  0% { opacity: 0; transform: translateY(.5rem); }
-  45%, 85% { opacity: .78; transform: none; }
-  100% { opacity: .52; transform: none; }
+  to { opacity: 1; filter: none; transform: none; }
 }
 
 @keyframes warmthArrive {
@@ -2547,14 +2620,67 @@ html[data-transitioning="true"] .scene {
 
   .letter-sheet {
     min-height: 49vh;
-    max-height: 65vh;
+    max-height: 62vh;
     padding: 1.1rem;
   }
 
   .letter-sheet__body {
-    max-height: calc(65vh - 6.4rem);
+    max-height: calc(62vh - 5.8rem);
     font-size: .95rem;
     line-height: 1.34;
+  }
+}
+
+/* Portrait phones used by the experience: one calm beat, no page or letter scroll. */
+@media (max-width: 30rem) and (min-height: 47rem) and (orientation: portrait) {
+  .truth-content {
+    gap: clamp(.9rem, 2.5vh, 1.35rem);
+  }
+
+  .truth-stage {
+    min-height: min(49vh, 25rem);
+  }
+
+  .truth-stage .narrative-stage__copy {
+    height: min(29vh, 14.5rem);
+    min-height: 10rem;
+  }
+
+  .letter-stage {
+    grid-template-rows: minmax(0, 1fr) auto 2.75rem;
+    align-content: stretch;
+    gap: .55rem;
+  }
+
+  .letter-sheet {
+    grid-row: 1;
+    align-self: center;
+    height: min(64dvh, 36rem);
+    min-height: 0;
+    max-height: none;
+    padding: clamp(1.1rem, 4.8vw, 1.45rem);
+  }
+
+  .letter-sheet > h2 {
+    margin-bottom: .62rem;
+  }
+
+  .letter-sheet__body {
+    max-height: calc(min(64dvh, 36rem) - 6.1rem);
+    font-size: clamp(.96rem, 3.9vw, 1.1rem);
+    line-height: 1.36;
+  }
+
+  .letter-hint {
+    grid-row: 2;
+  }
+
+  #letter-next-line,
+  #letter-finish {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: center;
+    justify-self: center;
   }
 }
 
@@ -2928,13 +3054,30 @@ html[data-transitioning="true"] .scene {
     animation-duration: .01ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
-    transition-delay: 0ms !important;
   }
 
   .scene,
   .scene__art,
-  .ambient__stars {
+  .ambient__stars,
+  .reveal-copy,
+  .narrative-stage__copy > *,
+  [data-sequence-output] > *,
+  .letter-paragraph,
+  .scene-button,
+  .text-button,
+  .quiet-button,
+  .hold-button,
+  .voice-button,
+  .intro-copy,
+  .love-word span,
+  .love-echoes > span,
+  .letter-sheet__signature,
+  .letter-sheet__mark,
+  .transition-veil::before,
+  .transition-veil::after,
+  .transition-veil > span,
+  .transition-veil > i {
+    filter: none !important;
     transform: none !important;
   }
 

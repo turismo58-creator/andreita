@@ -51,15 +51,27 @@
       }
     },
     timings: {
-      transition: 1050,
-      awakening: 5200,
+      transition: 1800,
+      awakening: 6500,
       introStarWake: 900,
-      nightBurst: 950,
-      resultDelay: 550,
-      revealHold: 2300,
+      nightBurst: 2000,
+      resultDelay: 2000,
+      constellationObserve: 2000,
+      revealObserve: 1800,
+      paintingObserve: 2600,
+      revealHold: 3000,
       dawnHold: 3100,
-      dawnFallback: 1700,
+      dawnFallback: 3000,
+      dawnCoast: 2600,
+      dawnObserve: 2000,
       growthVisual: 4300,
+      growthObserve: 2500,
+      fieldObserve: 2500,
+      postBeat: 1900,
+      beatTransition: 1100,
+      loveWord: 3000,
+      loveEcho: 1500,
+      loveEchoObserve: 2500,
       voiceSilence: 1600,
       voiceProbe: 1800,
       focus: 90
@@ -215,7 +227,8 @@
 
   const params = new URLSearchParams(window.location.search);
   const selfTestMode = params.get('test') === '1';
-  const fastMode = params.get('fast') === '1' || selfTestMode;
+  /* La lectura solo se acelera en la prueba automatizada. */
+  const fastMode = selfTestMode;
   const previewRequest = (params.get('preview') || '').trim().toLowerCase();
   const reduceQuery = window.matchMedia
     ? window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -229,8 +242,8 @@
   const sceneNames = sceneElements.map((scene) => scene.dataset.scene);
   const previewMode = sceneNames.includes(previewRequest);
   const supportsInert = 'inert' in HTMLElement.prototype;
-  const entryScale = selfTestMode ? 0.006 : fastMode || previewMode ? 0.045 : 1;
-  const transitionScale = selfTestMode ? 0.018 : fastMode || previewMode ? 0.12 : 1;
+  const entryScale = selfTestMode ? 0.006 : 1;
+  const transitionScale = selfTestMode ? 0.018 : 1;
 
   root.dataset.reducedMotion = reducedMotion ? 'true' : 'false';
   if (fastMode) root.dataset.fast = 'true';
@@ -308,10 +321,150 @@
   };
   window.STORY_STATE = storyState;
 
-  const sceneTimers = new Set();
-  const globalTimers = new Set();
   let sceneManager = null;
   let audioController = null;
+
+  class NarrativePacer {
+    constructor() {
+      this.scopes = new Map();
+      this.profiles = {
+        normal: { multiplier: 1, wpm: 145, minimum: 2400 },
+        intimate: { multiplier: 1.2, wpm: 140, minimum: 2600 },
+        emotional: { multiplier: 1.35, wpm: 135, minimum: 2800 },
+        confession: { multiplier: 1.55, wpm: 130, minimum: 3000 },
+        dawn: { multiplier: 1.25, wpm: 140, minimum: 2700 },
+        letter: { multiplier: 1.25, wpm: 135, minimum: 2800 },
+        final: { multiplier: 1.5, wpm: 130, minimum: 3200 }
+      };
+    }
+
+    scopeName(explicit, global) {
+      if (global) return '__global__';
+      return explicit || (sceneManager && sceneManager.currentSceneName) || '__boot__';
+    }
+
+    controllerFor(scope) {
+      let controller = this.scopes.get(scope);
+      if (!controller || controller.signal.aborted) {
+        controller = new AbortController();
+        this.scopes.set(scope, controller);
+      }
+      return controller;
+    }
+
+    beginScene(sceneName) {
+      if (!sceneName) return;
+      this.cancel(sceneName);
+      this.controllerFor(sceneName);
+    }
+
+    cancel(scope) {
+      const controller = this.scopes.get(scope);
+      if (controller) controller.abort();
+      this.scopes.delete(scope);
+    }
+
+    cancelAll() {
+      this.scopes.forEach((controller) => controller.abort());
+      this.scopes.clear();
+    }
+
+    scale(ms, kind) {
+      const duration = Math.max(0, Number(ms) || 0);
+      if (selfTestMode) {
+        if (kind === 'hold') return Math.max(32, Math.round(duration * 0.012));
+        if (kind === 'transition' || kind === 'cinematic') return Math.max(18, Math.round(duration * transitionScale));
+        return Math.max(1, Math.round(duration * entryScale));
+      }
+      /* Reduced motion changes movement, never semantic reading or contemplation. */
+      if (reducedMotion && ['entry', 'motion'].includes(kind)) {
+        return Math.min(duration, 180);
+      }
+      return duration;
+    }
+
+    schedule(callback, ms, options) {
+      const opts = options || {};
+      const scope = this.scopeName(opts.sceneName, opts.global);
+      const controller = this.controllerFor(scope);
+      const signal = opts.signal || controller.signal;
+      if (signal.aborted) return { cancel() {} };
+      let timerId = 0;
+      const cancel = () => {
+        if (timerId) window.clearTimeout(timerId);
+        timerId = 0;
+        signal.removeEventListener('abort', cancel);
+      };
+      timerId = window.setTimeout(() => {
+        cancel();
+        if (!signal.aborted) safe(callback, opts.context || 'pacer-timer')();
+      }, this.scale(ms, opts.kind || 'narrative'));
+      signal.addEventListener('abort', cancel, { once: true });
+      return { cancel };
+    }
+
+    wait(ms, options) {
+      const opts = options || {};
+      const scope = this.scopeName(opts.sceneName, opts.global);
+      const controller = this.controllerFor(scope);
+      const signal = opts.signal || controller.signal;
+      if (signal.aborted) return Promise.resolve(false);
+      return new Promise((resolve) => {
+        let settled = false;
+        let timerId = 0;
+        const finish = (completed) => {
+          if (settled) return;
+          settled = true;
+          if (timerId) window.clearTimeout(timerId);
+          signal.removeEventListener('abort', abort);
+          resolve(completed);
+        };
+        const abort = () => finish(false);
+        timerId = window.setTimeout(() => finish(true), this.scale(ms, opts.kind || 'narrative'));
+        signal.addEventListener('abort', abort, { once: true });
+      });
+    }
+
+    calculateReadingTime(text, mood, override) {
+      if (Number.isFinite(override) && override >= 0) return override;
+      const words = String(text || '').trim().split(/\s+/).filter(Boolean).length;
+      const profile = this.profiles[mood] || this.profiles.normal;
+      let minimum = profile.minimum;
+      if (words <= 4) minimum = Math.max(minimum, 2400);
+      else if (words <= 10) minimum = Math.max(minimum, 3300);
+      else if (words <= 18) minimum = Math.max(minimum, 4300);
+      else if (words <= 28) minimum = Math.max(minimum, 5400);
+      else minimum = Math.max(minimum, 6500);
+      const spoken = words > 0 ? words / profile.wpm * 60000 : minimum;
+      return Math.round(Math.max(minimum, spoken) * profile.multiplier);
+    }
+
+    async revealSequence(elements, options) {
+      const opts = options || {};
+      const items = Array.from(elements || []);
+      for (let index = 0; index < items.length; index += 1) {
+        if (opts.signal && opts.signal.aborted) return false;
+        const element = items[index];
+        if (typeof opts.beforeReveal === 'function') opts.beforeReveal(element, index);
+        element.classList.add('is-visible');
+        if (typeof opts.afterReveal === 'function') opts.afterReveal(element, index);
+        if (index < items.length - 1) {
+          const override = Array.isArray(opts.lineHolds) ? opts.lineHolds[index] : undefined;
+          const completed = await this.wait(this.calculateReadingTime(element.textContent, opts.mood, override), {
+            sceneName: opts.sceneName,
+            signal: opts.signal,
+            kind: 'narrative'
+          });
+          if (!completed) return false;
+        }
+      }
+      return true;
+    }
+  }
+
+  const narrativePacer = new NarrativePacer();
+  window.NarrativePacer = NarrativePacer;
+  window.narrativePacer = narrativePacer;
 
   function reportError(error, context) {
     root.dataset.appError = context || 'unknown';
@@ -342,48 +495,24 @@
   }
 
   function scaleDuration(ms, kind) {
-    if (kind === 'narrative') return Math.max(0, Math.round(ms * entryScale));
-    if (kind === 'hold') {
-      if (reducedMotion) return 1;
-      if (selfTestMode) return 45;
-      if (fastMode || previewMode) return Math.max(110, Math.round(ms * 0.08));
-      return ms;
-    }
-    if (kind === 'cinematic') {
-      if (reducedMotion && !fastMode) return 260;
-      return Math.max(0, Math.round(ms * transitionScale));
-    }
-    if (kind === 'transition') {
-      if (reducedMotion && !fastMode) return 1;
-      return Math.max(0, Math.round(ms * transitionScale));
-    }
-    if (reducedMotion && !fastMode) return 0;
-    return Math.max(0, Math.round(ms * entryScale));
+    return narrativePacer.scale(ms, kind || 'entry');
   }
 
   function schedule(fn, ms, kind, global) {
-    const collection = global ? globalTimers : sceneTimers;
-    const id = window.setTimeout(() => {
-      collection.delete(id);
-      safe(fn, 'timer')();
-    }, scaleDuration(ms, kind || 'entry'));
-    collection.add(id);
-    return id;
-  }
-
-  function wait(ms, kind) {
-    return new Promise((resolve) => {
-      const id = window.setTimeout(() => {
-        globalTimers.delete(id);
-        resolve();
-      }, scaleDuration(ms, kind || 'entry'));
-      globalTimers.add(id);
+    return narrativePacer.schedule(fn, ms, {
+      kind: kind || 'entry',
+      global: Boolean(global),
+      context: 'timer'
     });
   }
 
+  function wait(ms, kind) {
+    return narrativePacer.wait(ms, { kind: kind || 'entry', global: true });
+  }
+
   function clearSceneTimers() {
-    sceneTimers.forEach((id) => window.clearTimeout(id));
-    sceneTimers.clear();
+    const sceneName = sceneManager && sceneManager.currentSceneName;
+    if (sceneName) narrativePacer.cancel(sceneName);
   }
 
   function setReady(element, ready, concealWhenDisabled) {
@@ -411,7 +540,10 @@
   function announce(message) {
     if (!dom.announcer) return;
     dom.announcer.textContent = '';
-    window.setTimeout(() => { dom.announcer.textContent = message; }, 20);
+    narrativePacer.schedule(() => { dom.announcer.textContent = message; }, 20, {
+      kind: 'system',
+      sceneName: sceneManager && sceneManager.currentSceneName
+    });
   }
 
   function currentIs(name, allowTransition) {
@@ -489,38 +621,42 @@
       this.control = opts.control || null;
       this.finishControl = opts.finishControl || null;
       this.manual = Boolean(opts.manual);
-      this.nextLabel = opts.nextLabel || 'Seguir leyendo';
-      this.finalLabel = opts.finalLabel || 'Continuar';
+      this.retainPages = Boolean(opts.retainPages);
+      this.retainWhileFits = Boolean(opts.retainWhileFits);
+      this.mood = opts.mood || 'normal';
+      this.nextLabel = opts.nextLabel || 'Seguir cuando quieras';
+      this.originalLabel = this.control ? this.control.textContent.trim() : '';
+      this.finalLabel = opts.finalLabel || this.originalLabel || 'Continuar';
+      this.postBeatDelay = opts.postBeatDelay == null ? CONFIG.timings.postBeat : opts.postBeatDelay;
+      this.beatTransition = opts.beatTransition == null ? CONFIG.timings.beatTransition : opts.beatTransition;
       this.pages = [];
       this.index = -1;
       this.active = false;
       this.completed = false;
       this.token = 0;
-      this.timerIds = new Set();
+      this.advancing = false;
+      this.controller = null;
+      this.unlinkSceneAbort = null;
       this.onPage = null;
       this.onComplete = null;
       this.onFinalControl = null;
-      if (this.control) listen(this.control, 'click', () => this.advanceFromControl());
-    }
-
-    setTimer(fn, ms, kind) {
-      const token = this.token;
-      const id = schedule(() => {
-        this.timerIds.delete(id);
-        if (this.active && token === this.token) fn();
-      }, ms, kind || 'narrative');
-      this.timerIds.add(id);
-      return id;
+      this.controlGate = null;
+      if (this.control) listen(this.control, 'click', (event) => {
+        if (!this.active || !this.manual || this.control.disabled) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.advanceFromControl();
+      });
     }
 
     cancel() {
       this.active = false;
       this.token += 1;
-      this.timerIds.forEach((id) => {
-        window.clearTimeout(id);
-        sceneTimers.delete(id);
-      });
-      this.timerIds.clear();
+      this.advancing = false;
+      if (this.controller) this.controller.abort();
+      this.controller = null;
+      if (this.unlinkSceneAbort) this.unlinkSceneAbort();
+      this.unlinkSceneAbort = null;
       if (this.output) this.output.removeAttribute('aria-busy');
     }
 
@@ -532,7 +668,10 @@
       if (this.output) {
         this.output.replaceChildren();
         this.output.classList.remove('is-visible', 'is-complete');
+        this.output.classList.remove('is-changing');
+        if (this.retainWhileFits) this.output.style.overflowY = 'hidden';
       }
+      if (this.control && this.originalLabel) this.control.textContent = this.originalLabel;
       setReady(this.control, false);
       setReady(this.finishControl, false);
     }
@@ -544,36 +683,60 @@
       this.index = -1;
       this.active = true;
       this.completed = false;
+      this.advancing = false;
       this.onPage = opts.onPage || null;
       this.onComplete = opts.onComplete || null;
       this.onFinalControl = opts.onFinalControl || null;
+      this.controlGate = opts.controlGate || null;
       if (opts.nextLabel) this.nextLabel = opts.nextLabel;
-      if (opts.finalLabel) this.finalLabel = opts.finalLabel;
+      this.finalLabel = opts.finalLabel || this.originalLabel || 'Continuar';
+      if (opts.mood) this.mood = opts.mood;
       setReady(this.control, false);
       setReady(this.finishControl, false);
       if (!this.output || this.pages.length === 0) {
         this.finish();
         return;
       }
+      this.controller = new AbortController();
+      const sceneSignal = narrativePacer.controllerFor(this.sceneName).signal;
+      const abortSequence = () => this.controller && this.controller.abort();
+      sceneSignal.addEventListener('abort', abortSequence, { once: true });
+      this.unlinkSceneAbort = () => sceneSignal.removeEventListener('abort', abortSequence);
       this.output.classList.remove('is-complete');
+      this.output.classList.remove('is-changing');
       this.output.setAttribute('aria-busy', 'true');
-      this.setTimer(() => this.showPage(0), opts.startDelay || 0, 'narrative');
+      if (this.retainWhileFits) this.output.style.overflowY = 'hidden';
+      this.runStart(opts.startDelay || 0);
     }
 
-    render(pageData) {
+    async runStart(delay) {
+      const token = this.token;
+      const waited = await narrativePacer.wait(delay, {
+        sceneName: this.sceneName,
+        signal: this.controller && this.controller.signal,
+        kind: 'narrative'
+      });
+      if (waited && this.active && token === this.token) this.showPage(0);
+    }
+
+    makeLine(item, isLetter) {
+      const paragraph = document.createElement('p');
+      paragraph.className = isLetter
+        ? `letter-paragraph${item.className ? ` ${item.className}` : ''}`
+        : `narrative-line text-line${item.className ? ` ${item.className}` : ''}`;
+      if (!isLetter && item.className && item.className.includes('narrative-line--accent')) paragraph.classList.add('accent-line');
+      paragraph.dataset.line = '';
+      paragraph.textContent = item.text;
+      paragraph.setAttribute('aria-hidden', 'true');
+      return paragraph;
+    }
+
+    preparePage(pageData) {
       const isLetter = Boolean(this.output && this.output.hasAttribute('data-letter-output'));
       const wrapper = document.createElement('div');
       wrapper.className = `${isLetter ? 'letter-page' : 'narrative-page'}${pageData.pageClass ? ` ${pageData.pageClass}` : ''}`;
-      pageData.lines.forEach((item) => {
-        const paragraph = document.createElement('p');
-        paragraph.className = isLetter
-          ? `letter-paragraph${item.className ? ` ${item.className}` : ''}`
-          : `narrative-line text-line${item.className ? ` ${item.className}` : ''}`;
-        if (!isLetter && item.className && item.className.includes('narrative-line--accent')) paragraph.classList.add('accent-line');
-        paragraph.dataset.line = '';
-        paragraph.textContent = item.text;
-        wrapper.appendChild(paragraph);
-      });
+      const lines = pageData.lines.map((item) => this.makeLine(item, isLetter));
+      lines.forEach((paragraph) => wrapper.appendChild(paragraph));
       if (Array.isArray(pageData.accessibleLines) && pageData.accessibleLines.length) {
         const accessible = document.createElement('p');
         accessible.className = 'sr-only narrative-page__accessible';
@@ -581,60 +744,98 @@
         wrapper.appendChild(accessible);
       }
       if (isLetter) {
-        const fragment = document.createDocumentFragment();
-        while (wrapper.firstChild) fragment.appendChild(wrapper.firstChild);
-        this.output.replaceChildren(fragment);
+        const current = Array.from(this.output.children);
+        lines.forEach((paragraph) => this.output.appendChild(paragraph));
+        const overflow = current.length > 0 && this.output.clientHeight > 0 && this.output.scrollHeight > this.output.clientHeight + 3;
+        if (!this.retainWhileFits || overflow) this.output.replaceChildren(...lines);
       } else {
-        this.output.replaceChildren(wrapper);
+        const existing = this.output.querySelector('.narrative-page');
+        if (this.retainPages && existing) {
+          lines.forEach((paragraph) => existing.appendChild(paragraph));
+        } else {
+          this.output.replaceChildren(wrapper);
+        }
       }
       this.output.classList.add('is-visible');
-      this.output.setAttribute('aria-busy', 'false');
-      window.requestAnimationFrame(() => {
-        if (!this.active) return;
-        if (!isLetter) wrapper.classList.add('is-visible');
-        this.output.querySelectorAll('.narrative-line, .letter-paragraph').forEach((item) => item.classList.add('is-visible'));
-      });
+      if (!isLetter && wrapper.isConnected) wrapper.classList.add('is-visible');
+      return lines;
     }
 
-    showPage(index) {
-      if (!this.active || index < 0 || index >= this.pages.length) return;
+    async showPage(index) {
+      if (!this.active || this.advancing || index < 0 || index >= this.pages.length) return;
+      this.advancing = true;
+      const token = this.token;
       this.index = index;
       const pageData = this.pages[index];
       setReady(this.control, false);
-      this.render(pageData);
+      this.output.setAttribute('aria-busy', 'true');
+      const lines = this.preparePage(pageData);
       if (typeof this.onPage === 'function') this.onPage(index, pageData);
+      const mood = pageData.mood || this.mood;
+      const revealed = await narrativePacer.revealSequence(lines, {
+        mood,
+        lineHolds: pageData.lineHolds,
+        sceneName: this.sceneName,
+        signal: this.controller && this.controller.signal,
+        beforeReveal: (element) => {
+          element.removeAttribute('aria-hidden');
+          void element.offsetWidth;
+        }
+      });
+      if (!revealed || !this.active || token !== this.token) return;
+      this.output.setAttribute('aria-busy', 'false');
       const last = index === this.pages.length - 1;
+      const finalLine = pageData.lines[pageData.lines.length - 1];
+      const finalOverride = Array.isArray(pageData.lineHolds) ? pageData.lineHolds[pageData.lines.length - 1] : undefined;
+      let pause = narrativePacer.calculateReadingTime(finalLine && finalLine.text, mood, finalOverride) + this.postBeatDelay;
+      if (pageData.effect === 'echoes') {
+        const echoLead = narrativePacer.calculateReadingTime(finalLine && finalLine.text, 'intimate');
+        pause = Math.max(pause, echoLead + LOVE_ECHOES.length * CONFIG.timings.loveEcho + CONFIG.timings.loveEchoObserve);
+      }
+      if (Number.isFinite(pageData.postBeatDelay)) pause = Math.max(0, pageData.postBeatDelay);
+      const breathed = await narrativePacer.wait(pause, {
+        sceneName: this.sceneName,
+        signal: this.controller && this.controller.signal,
+        kind: 'narrative'
+      });
+      if (!breathed || !this.active || token !== this.token) return;
+      if (typeof this.controlGate === 'function') {
+        const gateResult = await this.controlGate(index, pageData, last);
+        if (gateResult === false || !this.active || token !== this.token) return;
+      }
+      this.advancing = false;
       if (this.manual) {
-        const pause = pageData.minHold == null ? 500 : pageData.minHold;
-        this.setTimer(() => {
-          if (last && this.finishControl) {
-            this.finish();
-            setReady(this.finishControl, true);
-          } else if (this.control) {
-            this.control.textContent = last ? this.finalLabel : this.nextLabel;
-            setReady(this.control, true);
-          }
-        }, pause, 'narrative');
+        if (last && this.finishControl) {
+          this.finish();
+          setReady(this.finishControl, true);
+        } else if (this.control) {
+          this.control.textContent = last ? this.finalLabel : this.nextLabel;
+          setReady(this.control, true);
+        }
         return;
       }
-      const hold = pageData.hold == null ? this.readingTime(pageData) : pageData.hold;
-      this.setTimer(() => {
-        if (last) this.finish();
-        else this.showPage(index + 1);
-      }, hold, 'narrative');
+      if (last) this.finish();
+      else this.showPage(index + 1);
     }
 
-    readingTime(pageData) {
-      const length = pageData.lines.reduce((total, item) => total + item.text.length, 0);
-      return Math.max(2200, Math.min(6500, 1200 + length * 34));
-    }
-
-    advanceFromControl() {
-      if (!this.active || !this.manual || !this.control || this.control.disabled) return;
+    async advanceFromControl() {
+      if (!this.active || this.advancing || !this.manual || !this.control || this.control.disabled) return;
+      this.advancing = true;
       setReady(this.control, false);
       if (this.index < this.pages.length - 1) {
+        this.output.classList.add('is-changing');
+        const token = this.token;
+        const waited = await narrativePacer.wait(this.beatTransition, {
+          sceneName: this.sceneName,
+          signal: this.controller && this.controller.signal,
+          kind: 'narrative'
+        });
+        if (!waited || !this.active || token !== this.token) return;
+        this.output.classList.remove('is-changing');
+        this.advancing = false;
         this.showPage(this.index + 1);
       } else {
+        this.advancing = false;
         this.finish();
         if (typeof this.onFinalControl === 'function') this.onFinalControl();
       }
@@ -644,11 +845,9 @@
       if (this.completed) return;
       this.completed = true;
       this.active = false;
-      this.timerIds.forEach((id) => {
-        window.clearTimeout(id);
-        sceneTimers.delete(id);
-      });
-      this.timerIds.clear();
+      this.advancing = false;
+      if (this.unlinkSceneAbort) this.unlinkSceneAbort();
+      this.unlinkSceneAbort = null;
       if (this.output) {
         this.output.classList.add('is-complete');
         this.output.setAttribute('aria-busy', 'false');
@@ -665,15 +864,51 @@
 
   function playAutoSequence(sceneName, pages, options) {
     const opts = options || {};
-    const sequence = new NarrativeSequence({ sceneName, output: opts.output || sequenceOutput(sceneName) });
+    const sourcePages = Array.isArray(pages) ? pages : [];
+    /* Un flujo sin control solo puede contener un beat; dentro de ese beat las
+       frases se revelan con su propio tiempo y nunca se reemplazan. */
+    const pacedPages = sourcePages.length <= 1
+      ? sourcePages
+      : [page(sourcePages.flatMap((item) => item.lines), { mood: opts.mood || 'normal' })];
+    const sequence = new NarrativeSequence({
+      sceneName,
+      output: opts.output || sequenceOutput(sceneName),
+      mood: opts.mood || 'normal',
+      retainPages: true,
+      postBeatDelay: opts.postBeatDelay == null ? 1200 : opts.postBeatDelay
+    });
     activeSequences.add(sequence);
-    sequence.start(pages, {
+    sequence.start(pacedPages, {
       startDelay: opts.startDelay || 0,
+      mood: opts.mood,
       onPage: opts.onPage,
       onComplete: () => {
         activeSequences.delete(sequence);
         if (typeof opts.onComplete === 'function' && activeIs(sceneName)) opts.onComplete();
       }
+    });
+    return sequence;
+  }
+
+  const guidedSequences = new Map();
+
+  function startGuidedSequence(sceneName, pages, options) {
+    const sequence = guidedSequences.get(sceneName);
+    const opts = options || {};
+    if (!sequence) throw new Error(`No existe una secuencia guiada para ${sceneName}.`);
+    activeSequences.add(sequence);
+    sequence.start(pages, {
+      startDelay: opts.startDelay || 0,
+      mood: opts.mood,
+      nextLabel: opts.nextLabel,
+      finalLabel: opts.finalLabel,
+      controlGate: opts.controlGate,
+      onPage: opts.onPage,
+      onComplete: () => {
+        activeSequences.delete(sequence);
+        if (typeof opts.onComplete === 'function' && activeIs(sceneName)) opts.onComplete();
+      },
+      onFinalControl: opts.onFinalControl || (() => currentIs(sceneName) && sceneManager.nextScene())
     });
     return sequence;
   }
@@ -745,6 +980,7 @@
       if (!scene) return;
       const name = scene.dataset.scene;
       const act = scene.dataset.act || 'night';
+      narrativePacer.beginScene(name);
       root.dataset.currentScene = name;
       if (experience) {
         experience.dataset.act = act;
@@ -811,8 +1047,8 @@
         if (opts.replay) resetStoryState();
         this.index = nextIndex;
         this.setActive(this.currentScene, true);
-        this.enter(this.currentScene);
         if (!opts.awakening) await wait(CONFIG.timings.transition * 0.52, 'transition');
+        this.enter(this.currentScene);
         if (opts.awakening) storyState.awakeningComplete = true;
         return true;
       } catch (error) {
@@ -924,10 +1160,13 @@
     async voiceAvailableWithin(timeout) {
       if (this.voiceState === 'available') return true;
       if (this.voiceState === 'missing') return false;
-      const limit = fastMode ? 120 : timeout;
+      const limit = selfTestMode ? 120 : timeout;
       return Promise.race([
         this.voiceReady,
-        new Promise((resolve) => window.setTimeout(() => resolve(false), Math.max(1, limit)))
+        narrativePacer.wait(Math.max(1, limit), {
+          sceneName: 'threshold',
+          kind: 'system'
+        }).then(() => false)
       ]);
     }
 
@@ -1106,8 +1345,7 @@
     ready: false,
     complete: false,
     holdFrame: 0,
-    holdStart: 0,
-    autoFrame: 0
+    holdStart: 0
   };
 
   function paintFog() {
@@ -1208,9 +1446,7 @@
     revealState.complete = true;
     revealState.progress = 1;
     cancelAnimationFrame(revealState.holdFrame);
-    cancelAnimationFrame(revealState.autoFrame);
     revealState.holdFrame = 0;
-    revealState.autoFrame = 0;
     if (dom.revealMeter) dom.revealMeter.style.width = '100%';
     if (dom.revealMeterControl) dom.revealMeterControl.setAttribute('aria-valuenow', '100');
     if (dom.revealFrame) {
@@ -1220,14 +1456,12 @@
     if (dom.fogCanvas) dom.fogCanvas.classList.add('is-cleared');
     setReady(dom.revealHold, false);
     schedule(() => {
-      playAutoSequence('reveal', CONFIG.sequences.revealResult, {
-        onComplete: () => {
-          byId('scene-reveal')?.classList.add('is-complete');
-          setReady(dom.revealNext, true);
-          announce('El cristal está limpio. Puedes seguir.');
-        }
+      byId('scene-reveal')?.classList.add('is-complete');
+      startGuidedSequence('reveal', CONFIG.sequences.revealResult, {
+        mood: 'emotional'
       });
-    }, CONFIG.timings.resultDelay, 'narrative');
+      announce('El cristal está limpio. Puedes seguir cuando quieras.');
+    }, CONFIG.timings.revealObserve, 'narrative');
   }
 
   function startRevealHold() {
@@ -1249,21 +1483,6 @@
     dom.revealHold?.classList.remove('is-holding');
   }
 
-  function autoReveal() {
-    if (!currentIs('reveal') || revealState.complete || revealState.autoFrame) return;
-    stopRevealHold();
-    const startProgress = revealState.progress;
-    const started = performance.now();
-    const duration = Math.max(1, scaleDuration(CONFIG.timings.revealHold, 'hold') * (1 - startProgress));
-    const tick = safe((now) => {
-      if (!revealState.autoFrame || revealState.complete) return;
-      const ratio = Math.min(1, (now - started) / duration);
-      updateRevealProgress(startProgress + (1 - startProgress) * ratio);
-      if (!revealState.complete) revealState.autoFrame = requestAnimationFrame(tick);
-    }, 'auto-reveal');
-    revealState.autoFrame = requestAnimationFrame(tick);
-  }
-
   function canvasPoint(event) {
     const rect = dom.fogCanvas.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
@@ -1275,6 +1494,7 @@
     started: 0,
     startProgress: 0,
     automatic: false,
+    coasting: false,
     milestone: 0,
     complete: false
   };
@@ -1296,28 +1516,56 @@
     if (dawnState.progress >= 0.999) completeDawn();
   }
 
+  function beginDawnCoast() {
+    if (!currentIs('dawn') || dawnState.complete || dawnState.coasting) return;
+    if (dawnState.frame) cancelAnimationFrame(dawnState.frame);
+    dawnState.frame = 0;
+    dawnState.coasting = true;
+    dawnState.automatic = false;
+    dawnState.progress = Math.max(0.82, dawnState.progress);
+    setReady(dom.dawnSun, false, false);
+    setReady(dom.dawnAccessible, false);
+    dom.dawnSun?.classList.remove('is-holding');
+    const started = performance.now();
+    const from = dawnState.progress;
+    const duration = Math.max(1, scaleDuration(CONFIG.timings.dawnCoast, 'cinematic'));
+    const tick = safe((now) => {
+      if (!dawnState.frame || dawnState.complete || !dawnState.coasting) return;
+      const ratio = Math.min(1, (now - started) / duration);
+      const eased = 1 - Math.pow(1 - ratio, 2);
+      updateDawn(from + (1 - from) * eased);
+      if (!dawnState.complete && ratio < 1) dawnState.frame = requestAnimationFrame(tick);
+    }, 'dawn-coast');
+    dawnState.frame = requestAnimationFrame(tick);
+  }
+
   function runDawn(automatic) {
-    if (!currentIs('dawn') || dawnState.complete || dawnState.frame || dom.dawnSun?.disabled) return;
+    if (!currentIs('dawn') || dawnState.complete || dawnState.coasting || dawnState.frame || dom.dawnSun?.disabled) return;
     dawnState.automatic = Boolean(automatic);
     dawnState.started = performance.now();
     dawnState.startProgress = dawnState.progress;
     dom.dawnSun?.classList.add('is-holding');
     if (automatic) setReady(dom.dawnAccessible, false);
+    const coastAt = 0.82;
     const total = scaleDuration(automatic ? CONFIG.timings.dawnFallback : CONFIG.timings.dawnHold, 'hold');
-    const duration = Math.max(1, total * (1 - dawnState.startProgress));
+    const duration = Math.max(1, total * Math.max(0, coastAt - dawnState.startProgress) / coastAt);
     const tick = safe((now) => {
-      if (!dawnState.frame || dawnState.complete) return;
-      updateDawn(dawnState.startProgress + (now - dawnState.started) / duration * (1 - dawnState.startProgress));
-      if (!dawnState.complete) dawnState.frame = requestAnimationFrame(tick);
+      if (!dawnState.frame || dawnState.complete || dawnState.coasting) return;
+      const ratio = Math.min(1, (now - dawnState.started) / duration);
+      updateDawn(dawnState.startProgress + ratio * (coastAt - dawnState.startProgress));
+      if (ratio >= 1) beginDawnCoast();
+      else dawnState.frame = requestAnimationFrame(tick);
     }, 'dawn-hold');
     dawnState.frame = requestAnimationFrame(tick);
   }
 
   function stopDawn(force) {
+    if (dawnState.coasting && !force) return;
     if (dawnState.automatic && !force) return;
     if (dawnState.frame) cancelAnimationFrame(dawnState.frame);
     dawnState.frame = 0;
     dawnState.automatic = false;
+    if (force) dawnState.coasting = false;
     dom.dawnSun?.classList.remove('is-holding');
   }
 
@@ -1336,48 +1584,123 @@
     if (audioController) audioController.setDawnProgress(1);
     setReady(dom.dawnSun, false, false);
     setReady(dom.dawnAccessible, false);
-    playAutoSequence('dawn', CONFIG.sequences.dawnResult, {
-      startDelay: CONFIG.timings.resultDelay,
-      onComplete: () => {
-        setReady(dom.dawnNext, true);
-        announce('El amanecer está completo. Una flor abrirá cuando esté lista.');
-      }
+    startGuidedSequence('dawn', CONFIG.sequences.dawnResult, {
+      startDelay: CONFIG.timings.dawnObserve,
+      mood: 'dawn'
     });
+    announce('El amanecer está completo. La historia esperará antes de continuar.');
   }
 
   let truthSequence = null;
   let letterSequence = null;
   let thresholdGateGeneration = 0;
 
-  function setupManualSequences() {
-    truthSequence = new NarrativeSequence({
-      sceneName: 'truth',
-      output: sequenceOutput('truth'),
-      control: dom.truthNext,
+  function registerGuidedSequence(sceneName, control, mood, options) {
+    const opts = options || {};
+    const sequence = new NarrativeSequence({
+      sceneName,
+      output: opts.output || sequenceOutput(sceneName),
+      control,
+      finishControl: opts.finishControl || null,
       manual: true,
-      nextLabel: 'Seguir leyendo',
+      mood,
+      nextLabel: opts.nextLabel || 'Seguir cuando quieras',
+      finalLabel: opts.finalLabel,
+      retainWhileFits: Boolean(opts.retainWhileFits),
+      postBeatDelay: opts.postBeatDelay
+    });
+    guidedSequences.set(sceneName, sequence);
+    return sequence;
+  }
+
+  function setupManualSequences() {
+    if (dom.voiceSkip) dom.voiceSkip.textContent = 'Prefiero seguir en silencio';
+    registerGuidedSequence('intro', dom.beginNight, 'emotional');
+    registerGuidedSequence('night', dom.nightNext, 'intimate');
+    registerGuidedSequence('constellation', dom.constellationNext, 'intimate');
+    registerGuidedSequence('reveal', dom.revealNext, 'emotional');
+    registerGuidedSequence('painting', dom.paintingNext, 'emotional');
+    truthSequence = registerGuidedSequence('truth', dom.truthNext, 'confession', {
       finalLabel: 'Seguir, sin adornos'
     });
-    letterSequence = new NarrativeSequence({
-      sceneName: 'letter',
+    registerGuidedSequence('love', dom.loveNext, 'intimate');
+    registerGuidedSequence('better', dom.betterNext, 'emotional');
+    registerGuidedSequence('dawn', dom.dawnNext, 'dawn');
+    registerGuidedSequence('growth', dom.growthNext, 'dawn');
+    registerGuidedSequence('brighter', dom.brighterNext, 'dawn');
+    registerGuidedSequence('field', dom.fieldNext, 'intimate');
+    letterSequence = registerGuidedSequence('letter', dom.letterNext, 'letter', {
       output: dom.letterOutput,
-      control: dom.letterNext,
       finishControl: dom.letterFinish,
-      manual: true,
-      nextLabel: 'Seguir leyendo'
+      nextLabel: 'Seguir leyendo',
+      retainWhileFits: true
     });
+    registerGuidedSequence('final', dom.finalNext, 'final');
+    registerGuidedSequence('epilogue', dom.replay, 'intimate');
+  }
+
+  function cloneBeat(source, extra) {
+    return Object.assign({}, source, {
+      lines: source.lines.map((item) => ({ text: item.text, className: item.className || '' }))
+    }, extra || {});
+  }
+
+  function truthBeats() {
+    const beats = CONFIG.sequences.truth.map((item) => cloneBeat(item, { mood: 'confession' }));
+    const declaration = page([
+      ...beats[6].lines,
+      ...beats[7].lines
+    ], { mood: 'confession', lineHolds: [3000], postBeatDelay: 4000 });
+    beats.splice(6, 2, declaration);
+    beats[0].postBeatDelay = 3100;
+    beats[1].postBeatDelay = 4700;
+    beats[2].postBeatDelay = 5600;
+    const humanBeat = beats.find((item) => item.lines.some((entry) => entry.text === 'Probablemente mil y una noches.'));
+    if (humanBeat) humanBeat.postBeatDelay = 4800;
+    return beats;
+  }
+
+  function letterBeats() {
+    const lines = CONFIG.sequences.letter.flatMap((item) => item.lines.map((entry) => ({
+      text: entry.text,
+      className: entry.className || ''
+    })));
+    const chunkSize = window.innerHeight <= 900 ? 2 : 3;
+    const beats = [];
+    for (let index = 0; index < lines.length; index += chunkSize) {
+      beats.push(page(lines.slice(index, index + chunkSize), { mood: 'letter' }));
+    }
+    return beats;
+  }
+
+  function finalBeats() {
+    const pauses = [4000, 4000, 4000, 4500, 3600, 4000, 3200, 4600];
+    return CONFIG.sequences.final.map((item, index) => cloneBeat(item, {
+      mood: 'final',
+      postBeatDelay: pauses[index],
+      lineHolds: index === 3
+        ? [2200, 2200]
+        : index === 4
+          ? [3000]
+          : index === 6
+            ? [1800, 1800]
+            : index === 7
+              ? [1800, 3600]
+              : item.lineHolds
+    }));
   }
 
   function startTruthSequence() {
-    truthSequence.start(CONFIG.sequences.truth, {
-      startDelay: 750,
-      onPage: (index) => {
+    startGuidedSequence('truth', truthBeats(), {
+      startDelay: 1000,
+      mood: 'confession',
+      onPage: (index, pageData) => {
         const scene = byId('scene-truth');
-        scene?.classList.toggle('is-declaration', index === 6 || index === 7);
-        scene?.classList.toggle('is-human', index === 13);
+        const content = pageData.lines.map((item) => item.text).join(' ');
+        scene?.classList.toggle('is-declaration', content.includes('Te quiero.'));
+        scene?.classList.toggle('is-human', content.includes('Probablemente mil y una noches.'));
       },
-      onComplete: () => { storyState.truthRead = true; },
-      onFinalControl: () => currentIs('truth') && sceneManager.nextScene()
+      onComplete: () => { storyState.truthRead = true; }
     });
   }
 
@@ -1391,10 +1714,12 @@
       dom.letterMark.classList.remove('is-visible');
     }
     if (dom.letterHint) dom.letterHint.textContent = 'Una página a la vez.';
-    letterSequence.start(CONFIG.sequences.letter, {
-      startDelay: 350,
+    const beats = letterBeats();
+    startGuidedSequence('letter', beats, {
+      startDelay: 900,
+      mood: 'letter',
       onPage: (index) => {
-        if (dom.letterHint) dom.letterHint.textContent = `Página ${index + 1} de ${CONFIG.sequences.letter.length}.`;
+        if (dom.letterHint) dom.letterHint.textContent = `Página ${index + 1} de ${beats.length}.`;
         if (dom.letterOutput) dom.letterOutput.scrollTop = 0;
       },
       onComplete: () => {
@@ -1411,11 +1736,18 @@
     });
   }
 
-  function revealLoveEchoes() {
+  function revealLoveEchoes(pageData) {
     const scene = byId('scene-love');
     scene?.classList.add('is-echoing');
+    const leadText = pageData && pageData.lines ? pageData.lines.map((item) => item.text).join(' ') : '';
+    const lead = narrativePacer.calculateReadingTime(leadText, 'intimate');
     document.querySelectorAll('.love-echoes > span').forEach((echo, index) => {
-      schedule(() => echo.classList.add('is-visible'), index * 260, 'narrative');
+      schedule(() => {
+        echo.classList.add('is-visible');
+        echo.style.transition = 'opacity 1.1s ease, transform 1.1s ease';
+        echo.style.opacity = '1';
+        echo.style.transform = 'translateY(0)';
+      }, lead + (index + 1) * CONFIG.timings.loveEcho, 'narrative');
     });
   }
 
@@ -1497,31 +1829,47 @@
         setReady(dom.introStar, true, false);
       }, CONFIG.timings.introStarWake, 'entry');
     } else if (name === 'night') {
-      playAutoSequence('night', CONFIG.sequences.night, {
-        startDelay: 450,
-        onComplete: () => setReady(dom.specialStar, true, false)
+      startGuidedSequence('night', CONFIG.sequences.night, {
+        startDelay: 1000,
+        mood: 'intimate',
+        finalLabel: 'Seguir cuando quieras',
+        onFinalControl: () => {
+          setReady(dom.nightNext, false);
+          setReady(dom.specialStar, true, false);
+        }
       });
     } else if (name === 'constellation') {
-      playAutoSequence('constellation', CONFIG.sequences.constellationIntro, {
-        startDelay: 350,
-        onComplete: () => document.querySelectorAll('.constellation-star').forEach((star) => {
-          if (!star.classList.contains('is-lit')) setReady(star, true, false);
-        })
+      startGuidedSequence('constellation', CONFIG.sequences.constellationIntro, {
+        startDelay: 900,
+        mood: 'intimate',
+        finalLabel: 'Seguir cuando quieras',
+        onFinalControl: () => {
+          setReady(dom.constellationNext, false);
+          document.querySelectorAll('.constellation-star').forEach((star) => {
+            if (!star.classList.contains('is-lit')) setReady(star, true, false);
+          });
+        }
       });
     } else if (name === 'reveal') {
       window.requestAnimationFrame(() => { if (activeIs('reveal')) paintFog(); });
-      playAutoSequence('reveal', CONFIG.sequences.revealIntro, {
-        startDelay: 300,
-        onComplete: () => {
+      startGuidedSequence('reveal', CONFIG.sequences.revealIntro, {
+        startDelay: 900,
+        mood: 'emotional',
+        finalLabel: 'Seguir cuando quieras',
+        onFinalControl: () => {
+          setReady(dom.revealNext, false);
           revealState.ready = true;
           dom.revealFrame?.classList.add('is-ready');
           setReady(dom.revealHold, true, false);
         }
       });
     } else if (name === 'painting') {
-      playAutoSequence('painting', CONFIG.sequences.paintingIntro, {
-        startDelay: 300,
-        onComplete: () => {
+      startGuidedSequence('painting', CONFIG.sequences.paintingIntro, {
+        startDelay: 900,
+        mood: 'emotional',
+        finalLabel: 'Seguir cuando quieras',
+        onFinalControl: () => {
+          setReady(dom.paintingNext, false);
           dom.painting?.classList.add('is-ready');
           document.querySelectorAll('.paint-point').forEach((point) => {
             if (!point.classList.contains('is-painted')) setReady(point, true, false);
@@ -1532,31 +1880,36 @@
       startTruthSequence();
     } else if (name === 'love') {
       scene?.classList.add('is-awake');
-      playAutoSequence('love', CONFIG.sequences.love, {
-        startDelay: 450,
+      startGuidedSequence('love', CONFIG.sequences.love, {
+        startDelay: CONFIG.timings.loveWord,
+        mood: 'intimate',
         onPage: (index, pageData) => {
-          if (pageData.effect === 'echoes') revealLoveEchoes();
+          if (pageData.effect === 'echoes') revealLoveEchoes(pageData);
           if (pageData.effect === 'warmth') scene?.classList.add('is-warming');
-        },
-        onComplete: () => showNext(dom.loveNext)
+        }
       });
     } else if (name === 'better') {
-      playAutoSequence('better', CONFIG.sequences.better, {
-        startDelay: 350,
-        onPage: (index, pageData) => pageData.effect === 'warmth' && scene?.classList.add('is-warming'),
-        onComplete: () => showNext(dom.betterNext)
+      startGuidedSequence('better', CONFIG.sequences.better, {
+        startDelay: 900,
+        mood: 'emotional',
+        onPage: (index, pageData) => pageData.effect === 'warmth' && scene?.classList.add('is-warming')
       });
     } else if (name === 'threshold') {
       storyState.voiceGateComplete = false;
-      playAutoSequence('threshold', CONFIG.sequences.threshold, {
-        startDelay: 550,
+      const thresholdBeat = page(CONFIG.sequences.threshold.flatMap((item) => item.lines), { mood: 'emotional' });
+      playAutoSequence('threshold', [thresholdBeat], {
+        startDelay: 1000,
+        mood: 'emotional',
         onComplete: openThresholdGate
       });
     } else if (name === 'dawn') {
       revealReturningEchoes();
-      playAutoSequence('dawn', CONFIG.sequences.dawnIntro, {
-        startDelay: 350,
-        onComplete: () => {
+      startGuidedSequence('dawn', CONFIG.sequences.dawnIntro, {
+        startDelay: 1000,
+        mood: 'dawn',
+        finalLabel: 'Seguir cuando quieras',
+        onFinalControl: () => {
+          setReady(dom.dawnNext, false);
           setReady(dom.dawnSun, true, false);
           setReady(dom.dawnAccessible, true, false);
           announce('Mantén presionado el horizonte o usa el botón Dejar amanecer.');
@@ -1569,25 +1922,26 @@
         scene?.classList.add('is-grown');
         storyState.sunflowerGrown = true;
       }, CONFIG.timings.growthVisual, 'narrative');
-      playAutoSequence('growth', CONFIG.sequences.growth, {
-        startDelay: 300,
-        onComplete: () => {
-          storyState.sunflowerGrown = true;
-          dom.growingFlower?.classList.add('is-grown');
-          showNext(dom.growthNext);
-        }
+      const growthGate = narrativePacer.wait(CONFIG.timings.growthVisual + CONFIG.timings.growthObserve, {
+        sceneName: 'growth',
+        kind: 'narrative'
+      });
+      startGuidedSequence('growth', CONFIG.sequences.growth, {
+        startDelay: 900,
+        mood: 'dawn',
+        controlGate: (index) => index === 0 ? growthGate : true
       });
     } else if (name === 'brighter') {
       scene?.classList.add('is-warming');
-      playAutoSequence('brighter', CONFIG.sequences.brighter, {
-        startDelay: 350,
-        onComplete: () => showNext(dom.brighterNext)
+      startGuidedSequence('brighter', CONFIG.sequences.brighter, {
+        startDelay: 900,
+        mood: 'dawn'
       });
     } else if (name === 'field') {
       window.requestAnimationFrame(() => scene?.classList.add('is-growing'));
-      playAutoSequence('field', CONFIG.sequences.field, {
-        startDelay: 350,
-        onComplete: () => showNext(dom.fieldNext)
+      startGuidedSequence('field', CONFIG.sequences.field, {
+        startDelay: CONFIG.timings.fieldObserve,
+        mood: 'intimate'
       });
     } else if (name === 'letter') {
       startLetterSequence();
@@ -1595,23 +1949,22 @@
       makeParticles(dom.finalParticles, reducedMotion ? 7 : 16, 'light-particle', 73421);
       scene?.classList.add('is-awake', 'is-growing');
       if (dom.returningSunflower) dom.returningSunflower.classList.toggle('is-visible', storyState.sunflowerGrown);
-      playAutoSequence('final', CONFIG.sequences.final, {
-        startDelay: 450,
-        onComplete: () => showNext(dom.finalNext)
+      startGuidedSequence('final', finalBeats(), {
+        startDelay: 1200,
+        mood: 'final'
       });
     } else if (name === 'epilogue') {
       scene?.classList.add('is-awake');
-      playAutoSequence('epilogue', CONFIG.sequences.epilogue, {
-        startDelay: 650,
-        onComplete: () => showNext(dom.replay)
+      startGuidedSequence('epilogue', CONFIG.sequences.epilogue, {
+        startDelay: 1200,
+        mood: 'intimate',
+        onFinalControl: () => currentIs('epilogue') && sceneManager.transitionToScene('intro', { replay: true })
       });
     }
   }
 
   function stopContinuousInteractions() {
     stopRevealHold();
-    if (revealState.autoFrame) cancelAnimationFrame(revealState.autoFrame);
-    revealState.autoFrame = 0;
     revealState.dragging = false;
     revealState.pointerId = null;
     revealState.lastPoint = null;
@@ -1694,8 +2047,6 @@
     setReady(dom.constellationNext, false);
 
     stopRevealHold();
-    cancelAnimationFrame(revealState.autoFrame);
-    revealState.autoFrame = 0;
     revealState.cells.clear();
     revealState.progress = 0;
     revealState.ready = false;
@@ -1724,7 +2075,13 @@
     setReady(dom.truthNext, false);
     setReady(dom.loveNext, false);
     setReady(dom.betterNext, false);
-    document.querySelectorAll('.love-echoes > span').forEach((echo) => echo.classList.remove('is-visible'));
+    document.querySelectorAll('.love-echoes > span').forEach((echo) => {
+      echo.classList.remove('is-visible');
+      echo.style.animation = 'none';
+      echo.style.transition = 'none';
+      echo.style.opacity = '0';
+      echo.style.transform = 'translateY(.5rem)';
+    });
 
     audioController?.stopVoice(true);
     closeVoicePanel();
@@ -1743,6 +2100,7 @@
     dawnState.milestone = 0;
     dawnState.frame = 0;
     dawnState.automatic = false;
+    dawnState.coasting = false;
     experience?.style.setProperty('--dawn-progress', '0');
     byId('scene-dawn')?.style.setProperty('--dawn-progress', '0');
     if (dom.dawnMeter) dom.dawnMeter.setAttribute('aria-valuenow', '0');
@@ -1835,12 +2193,11 @@
       dom.introBefore?.setAttribute('aria-hidden', 'true');
       const hint = document.querySelector('#intro-stage [data-interaction-hint]');
       if (hint) setVisible(hint, false);
-      playAutoSequence('intro', CONFIG.sequences.intro, {
-        startDelay: 250,
-        onComplete: () => showNext(dom.beginNight)
+      startGuidedSequence('intro', CONFIG.sequences.intro, {
+        startDelay: 900,
+        mood: 'emotional'
       });
     });
-    bindNext(dom.beginNight, 'intro');
 
     listen(dom.specialStar, 'click', () => {
       if (!currentIs('night') || dom.specialStar.disabled || dom.specialStar.classList.contains('is-touched')) return;
@@ -1849,7 +2206,11 @@
       setReady(dom.specialStar, false, false);
       makeParticles(dom.nightStars, reducedMotion ? 8 : 19, 'new-star', 19842);
       setVisible(dom.nightStars, true);
-      schedule(() => showNext(dom.nightNext), CONFIG.timings.nightBurst, 'narrative');
+      schedule(() => {
+        const nightSequence = guidedSequences.get('night');
+        if (nightSequence && nightSequence.originalLabel) dom.nightNext.textContent = nightSequence.originalLabel;
+        showNext(dom.nightNext);
+      }, CONFIG.timings.nightBurst, 'narrative');
     });
     bindNext(dom.nightNext, 'night');
 
@@ -1865,12 +2226,11 @@
         dom.constellation?.classList.add('is-complete');
         const hint = document.querySelector('#constellation-stage [data-interaction-hint]');
         if (hint) setVisible(hint, false);
-        schedule(() => playAutoSequence('constellation', CONFIG.sequences.constellationResult, {
-          onComplete: () => showNext(dom.constellationNext)
-        }), CONFIG.timings.resultDelay, 'narrative');
+        schedule(() => startGuidedSequence('constellation', CONFIG.sequences.constellationResult, {
+          mood: 'intimate'
+        }), CONFIG.timings.constellationObserve, 'narrative');
       }
     }));
-    bindNext(dom.constellationNext, 'constellation');
 
     listen(dom.fogCanvas, 'pointerdown', (event) => {
       if (!currentIs('reveal') || !revealState.ready || revealState.complete) return;
@@ -1919,11 +2279,9 @@
     listen(dom.revealHold, 'keyup', (event) => {
       if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
-        autoReveal();
+        stopRevealHold();
       }
     });
-    listen(dom.revealHold, 'click', () => autoReveal());
-    bindNext(dom.revealNext, 'reveal');
 
     document.querySelectorAll('.paint-point').forEach((point) => listen(point, 'click', () => {
       if (!currentIs('painting') || point.disabled || point.classList.contains('is-painted')) return;
@@ -1947,19 +2305,15 @@
         dom.painting?.classList.add('is-complete');
         const hint = document.querySelector('#painting-stage [data-interaction-hint]');
         if (hint) setVisible(hint, false);
-        schedule(() => playAutoSequence('painting', CONFIG.sequences.paintingResult, {
-          onComplete: () => showNext(dom.paintingNext)
-        }), CONFIG.timings.resultDelay, 'narrative');
+        schedule(() => startGuidedSequence('painting', CONFIG.sequences.paintingResult, {
+          mood: 'emotional'
+        }), CONFIG.timings.paintingObserve, 'narrative');
       }
     }));
-    bindNext(dom.paintingNext, 'painting');
-
-    bindNext(dom.loveNext, 'love');
-    bindNext(dom.betterNext, 'better');
 
     if (audioController) {
       audioController.onVoiceEnded = () => finishThresholdVoice(CONFIG.timings.voiceSilence);
-      audioController.onVoiceFailure = () => finishThresholdVoice(fastMode ? 20 : 300);
+      audioController.onVoiceFailure = () => finishThresholdVoice(selfTestMode ? 20 : 350);
     }
     listen(dom.voiceControl, 'click', () => {
       if (!currentIs('threshold') || dom.voiceControl.disabled) return;
@@ -1968,7 +2322,7 @@
     listen(dom.voiceSkip, 'click', () => {
       if (!currentIs('threshold') || dom.voiceSkip.disabled) return;
       audioController?.stopVoice(true);
-      finishThresholdVoice(fastMode ? 20 : 260);
+      finishThresholdVoice(CONFIG.timings.voiceSilence);
     });
     listen(dom.thresholdStar, 'click', () => {
       if (!currentIs('threshold') || dom.thresholdStar.disabled || sceneManager.isTransitioning) return;
@@ -2000,17 +2354,7 @@
       }
     });
     listen(dom.dawnAccessible, 'click', () => runDawn(true));
-    bindNext(dom.dawnNext, 'dawn');
-    bindNext(dom.growthNext, 'growth');
-    bindNext(dom.brighterNext, 'brighter');
-    bindNext(dom.fieldNext, 'field');
     bindNext(dom.letterFinish, 'letter');
-    bindNext(dom.finalNext, 'final');
-    listen(dom.replay, 'click', () => {
-      if (!currentIs('epilogue') || dom.replay.disabled) return;
-      setReady(dom.replay, false);
-      sceneManager.transitionToScene('intro', { replay: true });
-    });
   }
 
   function setViewportUnit() {
@@ -2069,7 +2413,7 @@
         try { result = Boolean(predicate()); } catch (error) { reject(error); return; }
         if (result) { resolve(); return; }
         if (performance.now() - started > limit) { reject(new Error(`Self-test timeout: ${label}`)); return; }
-        window.setTimeout(check, 8);
+        narrativePacer.schedule(check, 8, { kind: 'qa', global: true, context: 'self-test-poll' });
       };
       check();
     });
@@ -2079,50 +2423,74 @@
     const ready = (element) => Boolean(element && !element.disabled && element.getAttribute('aria-hidden') !== 'true');
     const inScene = (name) => sceneManager.currentSceneName === name && !sceneManager.isTransitioning;
 
+    const advanceGuidedScene = async (sceneName, control, maximum) => {
+      let turns = 0;
+      while (inScene(sceneName) && turns < maximum) {
+        await waitFor(() => !inScene(sceneName) || ready(control), `${sceneName} beat ${turns + 1}`);
+        if (!inScene(sceneName)) break;
+        control.click();
+        turns += 1;
+      }
+      if (inScene(sceneName)) throw new Error(`Self-test did not finish guided scene: ${sceneName}`);
+    };
+
+    const advanceUntil = async (sceneName, control, predicate, maximum, label) => {
+      let turns = 0;
+      while (inScene(sceneName) && !predicate() && turns < maximum) {
+        await waitFor(() => predicate() || ready(control), `${label} beat ${turns + 1}`);
+        if (predicate()) break;
+        control.click();
+        turns += 1;
+      }
+      if (!predicate()) throw new Error(`Self-test did not unlock ${label}`);
+    };
+
+    const shortReading = narrativePacer.calculateReadingTime('Te quiero.', 'normal');
+    const longReading = narrativePacer.calculateReadingTime('Quiero escribir contigo una versión mucho más sincera y verdadera.', 'normal');
+    if (shortReading < 2200 || shortReading > 2800 || longReading <= shortReading) {
+      throw new Error('NarrativePacer reading-time invariant failed');
+    }
+    if (Array.from(guidedSequences.values()).some((sequence) => !sequence.manual)) {
+      throw new Error('A guided beat sequence is not manual');
+    }
+    if (letterBeats().some((beat) => beat.lines.length < 1 || beat.lines.length > 3)) {
+      throw new Error('Letter beat normalization failed');
+    }
+
     await waitFor(() => ready(dom.introStar), 'intro star');
     dom.introStar.click();
-    await waitFor(() => ready(dom.beginNight), 'intro sequence');
-    dom.beginNight.click();
+    await advanceGuidedScene('intro', dom.beginNight, CONFIG.sequences.intro.length + 2);
 
     await waitFor(() => inScene('night'), 'night scene');
-    await waitFor(() => ready(dom.specialStar), 'night star');
+    await advanceUntil('night', dom.nightNext, () => ready(dom.specialStar), CONFIG.sequences.night.length + 2, 'night star');
     dom.specialStar.click();
     await waitFor(() => ready(dom.nightNext), 'night completion');
     dom.nightNext.click();
 
     await waitFor(() => inScene('constellation'), 'constellation scene');
-    await waitFor(() => Array.from(document.querySelectorAll('.constellation-star')).every((star) => !star.disabled), 'constellation controls');
+    const constellationReady = () => Array.from(document.querySelectorAll('.constellation-star')).every((star) => !star.disabled);
+    await advanceUntil('constellation', dom.constellationNext, constellationReady, CONFIG.sequences.constellationIntro.length + 2, 'constellation controls');
     document.querySelectorAll('.constellation-star').forEach((star) => star.click());
-    await waitFor(() => ready(dom.constellationNext), 'constellation completion');
-    dom.constellationNext.click();
+    await advanceGuidedScene('constellation', dom.constellationNext, CONFIG.sequences.constellationResult.length + 2);
 
     await waitFor(() => inScene('reveal'), 'reveal scene');
-    await waitFor(() => !dom.revealHold.disabled, 'reveal fallback');
+    await advanceUntil('reveal', dom.revealNext, () => !dom.revealHold.disabled, CONFIG.sequences.revealIntro.length + 2, 'reveal controls');
     completeReveal();
-    await waitFor(() => ready(dom.revealNext), 'reveal completion');
-    dom.revealNext.click();
+    await advanceGuidedScene('reveal', dom.revealNext, CONFIG.sequences.revealResult.length + 2);
 
     await waitFor(() => inScene('painting'), 'painting scene');
-    await waitFor(() => Array.from(document.querySelectorAll('.paint-point')).every((point) => !point.disabled), 'painting controls');
+    const paintingReady = () => Array.from(document.querySelectorAll('.paint-point')).every((point) => !point.disabled);
+    await advanceUntil('painting', dom.paintingNext, paintingReady, CONFIG.sequences.paintingIntro.length + 2, 'painting controls');
     document.querySelectorAll('.paint-point').forEach((point) => point.click());
-    await waitFor(() => ready(dom.paintingNext), 'painting completion');
-    dom.paintingNext.click();
+    await advanceGuidedScene('painting', dom.paintingNext, CONFIG.sequences.paintingResult.length + 2);
 
     await waitFor(() => inScene('truth'), 'truth scene');
-    let truthTurns = 0;
-    while (inScene('truth') && truthTurns < CONFIG.sequences.truth.length + 2) {
-      await waitFor(() => ready(dom.truthNext), `truth page ${truthTurns + 1}`);
-      dom.truthNext.click();
-      truthTurns += 1;
-      if (!inScene('truth')) break;
-    }
+    await advanceGuidedScene('truth', dom.truthNext, truthBeats().length + 2);
     await waitFor(() => inScene('love'), 'love scene');
-    await waitFor(() => ready(dom.loveNext), 'love completion');
-    dom.loveNext.click();
+    await advanceGuidedScene('love', dom.loveNext, CONFIG.sequences.love.length + 2);
 
     await waitFor(() => inScene('better'), 'better scene');
-    await waitFor(() => ready(dom.betterNext), 'better completion');
-    dom.betterNext.click();
+    await advanceGuidedScene('better', dom.betterNext, CONFIG.sequences.better.length + 2);
 
     await waitFor(() => inScene('threshold'), 'threshold scene');
     await waitFor(() => ready(dom.thresholdStar) || (dom.voicePanel && !dom.voicePanel.hidden), 'threshold gate');
@@ -2131,28 +2499,25 @@
     dom.thresholdStar.click();
 
     await waitFor(() => inScene('dawn'), 'dawn scene');
-    await waitFor(() => !dom.dawnAccessible.disabled, 'dawn fallback');
+    await advanceUntil('dawn', dom.dawnNext, () => !dom.dawnAccessible.disabled, CONFIG.sequences.dawnIntro.length + 2, 'dawn controls');
     dom.dawnAccessible.click();
     /* Headless virtual time does not guarantee requestAnimationFrame ticks. */
     completeDawn();
-    await waitFor(() => ready(dom.dawnNext), 'dawn completion');
-    dom.dawnNext.click();
+    await advanceGuidedScene('dawn', dom.dawnNext, CONFIG.sequences.dawnResult.length + 2);
 
     await waitFor(() => inScene('growth'), 'growth scene');
-    await waitFor(() => ready(dom.growthNext), 'growth completion');
-    dom.growthNext.click();
+    await advanceGuidedScene('growth', dom.growthNext, CONFIG.sequences.growth.length + 2);
 
     await waitFor(() => inScene('brighter'), 'brighter scene');
-    await waitFor(() => ready(dom.brighterNext), 'brighter completion');
-    dom.brighterNext.click();
+    await advanceGuidedScene('brighter', dom.brighterNext, CONFIG.sequences.brighter.length + 2);
 
     await waitFor(() => inScene('field'), 'field scene');
-    await waitFor(() => ready(dom.fieldNext), 'field completion');
-    dom.fieldNext.click();
+    await advanceGuidedScene('field', dom.fieldNext, CONFIG.sequences.field.length + 2);
 
     await waitFor(() => inScene('letter'), 'letter scene');
     let letterTurns = 0;
-    while (!ready(dom.letterFinish) && letterTurns < CONFIG.sequences.letter.length + 2) {
+    const letterMaximum = letterBeats().length + 2;
+    while (!ready(dom.letterFinish) && letterTurns < letterMaximum) {
       await waitFor(() => ready(dom.letterNext) || ready(dom.letterFinish), `letter page ${letterTurns + 1}`);
       if (ready(dom.letterNext)) dom.letterNext.click();
       letterTurns += 1;
@@ -2161,10 +2526,13 @@
     dom.letterFinish.click();
 
     await waitFor(() => inScene('final'), 'final scene');
-    await waitFor(() => ready(dom.finalNext), 'final completion');
-    dom.finalNext.click();
+    await advanceGuidedScene('final', dom.finalNext, CONFIG.sequences.final.length + 2);
 
     await waitFor(() => inScene('epilogue'), 'epilogue scene');
+    for (let turn = 0; turn < CONFIG.sequences.epilogue.length - 1; turn += 1) {
+      await waitFor(() => ready(dom.replay), `epilogue beat ${turn + 1}`);
+      dom.replay.click();
+    }
     await waitFor(() => ready(dom.replay), 'epilogue completion');
     if (storyState.memories.size !== 5) throw new Error('Persistent memory state is incomplete');
     if (storyState.principles.size !== 4) throw new Error('Persistent principle state is incomplete');
@@ -2172,6 +2540,8 @@
     dom.replay.click();
     await waitFor(() => inScene('intro'), 'replay');
     if (storyState.memories.size || storyState.principles.size || storyState.sunflowerGrown) throw new Error('Replay did not reset story state');
+    const staleScopes = Array.from(narrativePacer.scopes.keys()).filter((scope) => !['__global__', 'intro'].includes(scope));
+    if (staleScopes.length) throw new Error(`Stale pacer scopes after replay: ${staleScopes.join(', ')}`);
     if (root.dataset.selfTest !== 'failed') root.dataset.selfTest = 'passed';
   }
 
