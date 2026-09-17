@@ -4341,3 +4341,699 @@ html.is-previewing .scene { transition: none; }
 
   .closing-mark__light { animation: none; }
 }
+
+/* V4 · despedida en siete momentos */
+
+:root {
+  --scene-time: 1400ms;
+  --farewell-gold: #f3bf45;
+  --farewell-cream: #f7eedf;
+}
+
+.experience[data-act="memories"] .ambient__wash {
+  background:
+    radial-gradient(ellipse at 70% 25%, rgba(61, 97, 138, .2), transparent 34%),
+    linear-gradient(165deg, #02050d, #0a1931);
+}
+
+.experience[data-act="sorry"] .ambient__wash {
+  background: linear-gradient(180deg, #010207, #02040a);
+}
+
+.experience[data-act="sorry"] .ambient__stars,
+.experience[data-act="sorry"] .ambient__swirl,
+.experience[data-act="sorry"] .ambient__brushes {
+  opacity: 0;
+}
+
+.experience[data-act="sorry"] .progress-track { opacity: .16; }
+
+.experience[data-act="decision"] .ambient__wash {
+  background:
+    radial-gradient(circle at 52% 46%, rgba(24, 46, 76, .14), transparent 36%),
+    linear-gradient(180deg, #02050c, #071226);
+}
+
+.experience[data-act="decision"] .ambient__stars { opacity: .22; }
+.experience[data-act="decision"] .ambient__swirl { opacity: .12; }
+
+.experience[data-act="flowers"] .ambient__wash {
+  background:
+    radial-gradient(circle at 72% 20%, rgba(255, 231, 158, .34), transparent 23%),
+    linear-gradient(165deg, #446c84, #96767b 58%, #d89a5a);
+}
+
+.experience[data-act="cliff"] .ambient__wash {
+  background: linear-gradient(180deg, #020611, #061229 62%, #07192b);
+}
+
+.experience[data-act="dawn"] .ambient__wash {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(255, 209, 108, .46), transparent 40%),
+    linear-gradient(180deg, #315b7c, #9b7482 56%, #e3a066 83%);
+}
+
+.scene--intro .intro-stage {
+  min-height: min(49vh, 25rem);
+}
+
+.scene--intro .intro-copy--before.is-leaving {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.story-star.is-ready,
+.story-star.is-lit {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 2 · gratitud */
+
+.farewell-memories-content {
+  align-content: start;
+  justify-items: center;
+  gap: .3rem;
+}
+
+.farewell-memories-content > .scene__title {
+  max-width: 18ch;
+  font-size: clamp(1.75rem, 7.8vw, 3.25rem);
+  line-height: 1;
+  text-align: center;
+}
+
+.farewell-memories-content .constellation-stage {
+  display: grid;
+  min-height: min(66vh, 37rem);
+  grid-template-rows: minmax(5.3rem, auto) minmax(13rem, 1fr) auto auto;
+  align-items: center;
+  align-content: stretch;
+  gap: .42rem;
+}
+
+.farewell-memories-content .constellation-result {
+  z-index: 4;
+  min-height: 5.3rem;
+}
+
+.farewell-memories-content .constellation.is-observed {
+  opacity: .12;
+  filter: blur(1px);
+  pointer-events: none;
+  transform: scale(.98);
+}
+
+.farewell-memories-content .star__word {
+  max-width: min(10rem, 38vw);
+  font-size: clamp(.7rem, 2.7vw, .88rem);
+}
+
+.memory-emphasis {
+  color: #fff4d1 !important;
+  font-size: clamp(2.2rem, 10vw, 4.4rem) !important;
+  line-height: 1 !important;
+  text-shadow: 0 0 1.6rem rgba(244, 196, 79, .24);
+}
+
+/* 3 · responsabilidad */
+
+.scene--sorry {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(18, 28, 44, .1), transparent 32%),
+    #010207;
+}
+
+.sorry-content {
+  align-content: center;
+  gap: clamp(.45rem, 2vh, .9rem);
+}
+
+.sorry-content .eyebrow { opacity: .42; }
+
+.sorry-stage {
+  min-height: min(65vh, 35rem);
+  align-content: center;
+}
+
+.sorry-copy {
+  min-height: min(32vh, 16rem);
+  align-content: center;
+}
+
+.sorry-copy .narrative-line {
+  color: rgba(246, 239, 227, .92);
+  font-size: clamp(1.18rem, 5.1vw, 1.8rem);
+}
+
+.sorry-copy .sorry-emphasis {
+  color: #fffaf1;
+  font-size: clamp(2.8rem, 14vw, 6rem);
+  font-style: normal;
+  line-height: .94;
+  letter-spacing: -.02em;
+  text-shadow: 0 0 2rem rgba(226, 232, 239, .11);
+}
+
+/* 4 · decisión */
+
+.scene--decision {
+  background:
+    radial-gradient(circle at 75% 24%, rgba(59, 89, 126, .1), transparent 24%),
+    linear-gradient(180deg, rgba(1, 4, 11, .94), rgba(5, 15, 31, .97));
+}
+
+.decision-night {
+  background:
+    repeating-radial-gradient(ellipse at 20% 35%, transparent 0 1.4rem, rgba(77, 111, 150, .025) 1.52rem 1.72rem, transparent 1.82rem 3rem);
+}
+
+.decision-star {
+  position: absolute;
+  right: 22%;
+  top: 22%;
+  color: rgba(255, 232, 174, .78);
+  font-family: Georgia, serif;
+  font-size: .85rem;
+  text-shadow: 0 0 1rem rgba(255, 216, 119, .5);
+  animation: twinkle 5s ease-in-out infinite;
+}
+
+.decision-content {
+  align-content: center;
+  gap: clamp(.65rem, 3vh, 1.35rem);
+}
+
+.decision-stage {
+  min-height: min(63vh, 34rem);
+  align-content: center;
+}
+
+.decision-stage .narrative-stage__copy {
+  min-height: min(33vh, 17rem);
+}
+
+.decision-emphasis {
+  color: #fff5db !important;
+  font-size: clamp(2.3rem, 11vw, 4.8rem) !important;
+  font-style: normal !important;
+  line-height: .98 !important;
+}
+
+/* 5 · regalo de despedida */
+
+.scene--farewell-flowers {
+  background:
+    radial-gradient(ellipse at 72% 20%, rgba(255, 239, 185, .44), transparent 21%),
+    linear-gradient(180deg, #5d8297, #ad8587 56%, #dda45f 78%, #b58238);
+}
+
+.scene--farewell-flowers .field-flower {
+  animation:
+    fieldArrive 1.25s var(--ease-out) calc(var(--d) * .38) both,
+    fieldSway 6s ease-in-out calc(var(--d) + 1.2s) infinite alternate;
+}
+
+.flowers-content {
+  z-index: 8;
+  align-content: start;
+  gap: .55rem;
+  padding-top: clamp(1rem, 5vh, 2.8rem);
+}
+
+.flowers-content::before {
+  position: absolute;
+  z-index: -1;
+  width: min(43rem, 112%);
+  height: 124%;
+  top: -12%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(17, 31, 40, .7), rgba(17, 31, 40, .38) 48%, transparent 73%);
+  content: "";
+}
+
+.flowers-stage {
+  min-height: min(55vh, 29rem);
+  align-content: center;
+}
+
+.flowers-stage .narrative-stage__copy {
+  min-height: min(25vh, 12rem);
+  transition: opacity .9s ease, filter .9s ease;
+}
+
+.flowers-stage .narrative-stage__copy.is-muted {
+  opacity: .08;
+  filter: blur(2px);
+}
+
+.farewell-emphasis {
+  color: #fff0ba !important;
+  font-size: clamp(2rem, 9vw, 4rem) !important;
+  font-style: normal !important;
+  line-height: 1 !important;
+  text-shadow: 0 0 1.8rem rgba(247, 192, 58, .35);
+}
+
+.farewell-card {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  width: min(15rem, 72vw);
+  min-height: 8.5rem;
+  padding: 1rem;
+  border: 1px solid rgba(105, 76, 38, .3);
+  border-radius: .18rem .48rem .22rem .35rem;
+  place-items: center;
+  align-content: center;
+  gap: .2rem;
+  background:
+    linear-gradient(rgba(255, 248, 218, .91), rgba(234, 215, 168, .9)),
+    var(--paper);
+  box-shadow: 0 1.4rem 3.2rem rgba(12, 18, 19, .32);
+  color: #3b3022;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(.8rem) rotate(-1deg);
+  transition: opacity 1.1s ease, transform 1.3s var(--ease-out), visibility 1.1s ease;
+}
+
+.farewell-card.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: rotate(-1deg);
+}
+
+.farewell-card p {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+}
+
+.farewell-card > span:last-child {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-style: italic;
+}
+
+.farewell-card__flower {
+  width: 2.6rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #5c391b 0 21%, transparent 22%),
+    repeating-conic-gradient(#efb52c 0 10deg, #d88617 11deg 18deg, #f5c744 19deg 28deg);
+  mask: radial-gradient(circle, #000 0 22%, transparent 23% 30%, #000 31% 58%, transparent 59%);
+}
+
+/* 6 · pico emocional */
+
+.scene--cliff.is-looking-up .cliff-scape {
+  transform: translateY(2.2rem) scale(1.045);
+  transition: transform 5.2s var(--ease-in-out);
+}
+
+.scene--cliff.is-looking-up .cliff-content {
+  opacity: 0;
+  filter: blur(4px);
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-.5rem);
+  transition: opacity 1.2s ease, filter 1.2s ease, transform 1.4s ease, visibility 1.2s ease;
+}
+
+.scene--cliff.is-looking-up .cliff-presence {
+  opacity: .54;
+  transform: translate3d(0, -.35rem, 0) scale(1.03);
+}
+
+.cliff-important {
+  max-width: 28ch !important;
+  color: #fff9ec !important;
+  font-size: clamp(1.75rem, 7.8vw, 3.2rem) !important;
+  line-height: 1.03 !important;
+  text-shadow: 0 0 1.7rem rgba(212, 225, 240, .2) !important;
+}
+
+.is-release-transition .transition-veil,
+.transition-veil.is-awakening {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(235, 153, 78, .46), transparent 43%),
+    linear-gradient(180deg, rgba(2, 6, 15, .93), rgba(48, 48, 74, .93) 60%, rgba(163, 98, 70, .88));
+}
+
+/* 7 · aceptación y amanecer */
+
+.scene--final-dawn {
+  --dawn-progress: 0;
+  background: #172943;
+  transition: --dawn-progress 7s linear;
+}
+
+.scene--final-dawn.is-awakening { --dawn-progress: 1; }
+
+.final-dawn-sky .dawn-sky__night {
+  opacity: calc(1 - var(--dawn-progress));
+  transition: opacity 6s ease;
+}
+
+.final-dawn-sky .dawn-sky__violet {
+  opacity: calc(var(--dawn-progress) * .92);
+  transition: opacity 6s ease .5s;
+}
+
+.final-dawn-sky .dawn-sky__gold {
+  opacity: var(--dawn-progress);
+  transition: opacity 6s ease 1s;
+}
+
+.dawn-golden-star {
+  position: absolute !important;
+  z-index: 12;
+  width: auto !important;
+  height: auto !important;
+  inset: 23% 22% auto auto !important;
+  color: #ffe28b;
+  font-family: Georgia, serif;
+  font-size: 1.1rem;
+  opacity: 0;
+  text-shadow: 0 0 .7rem #ffd45e, 0 0 2rem rgba(244, 178, 47, .72);
+  transform: translate3d(0, -1rem, 0) scale(.7);
+}
+
+.scene--final-dawn.is-awakening .dawn-golden-star {
+  animation: farewellStarToHorizon 5.2s var(--ease-in-out) both;
+}
+
+.final-dawn-content {
+  z-index: 8;
+  align-content: center;
+  gap: .5rem;
+  transition: opacity 1.5s ease, filter 1.5s ease, visibility 1.5s ease;
+}
+
+.final-dawn-stage {
+  min-height: min(66vh, 36rem);
+  align-content: center;
+}
+
+.final-dawn-stage .dawn-copy {
+  z-index: 4;
+  min-height: min(29vh, 14rem);
+}
+
+.final-dawn-stage .narrative-line {
+  color: rgba(255, 246, 224, .96);
+  text-shadow: 0 .1rem .7rem rgba(25, 30, 33, .48);
+}
+
+.final-wish {
+  max-width: 27ch !important;
+  color: #fff1bb !important;
+  font-size: clamp(1.8rem, 8vw, 3.5rem) !important;
+  line-height: 1.02 !important;
+  text-shadow: 0 0 1.8rem rgba(249, 193, 62, .4) !important;
+}
+
+.final-sunflower {
+  position: absolute;
+  z-index: 2;
+  width: 5.5rem;
+  height: 9rem;
+  right: 50%;
+  bottom: -1rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(50%);
+}
+
+.final-sunflower__stem {
+  position: absolute;
+  width: .32rem;
+  height: 5.2rem;
+  left: 50%;
+  bottom: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #29432f, #64804b 46%, #2e4931);
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: bottom;
+}
+
+.final-sunflower__head {
+  position: absolute;
+  z-index: 2;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #503018 0 19%, #70451d 20% 23%, transparent 24%),
+    repeating-conic-gradient(#f2bc31 0 10deg, #d98a17 11deg 18deg, #f7cb43 19deg 28deg);
+  filter: drop-shadow(0 .55rem .8rem rgba(100, 55, 9, .25));
+  opacity: 0;
+  transform: scale(.15) rotate(-14deg);
+  mask: radial-gradient(circle, #000 0 23%, transparent 24% 29%, #000 30% 58%, transparent 59%);
+}
+
+.final-sunflower__leaf {
+  position: absolute;
+  width: 2.5rem;
+  height: 1.2rem;
+  left: 50%;
+  bottom: 2.5rem;
+  border-radius: 100% 0 100% 0;
+  background: #46623d;
+  opacity: 0;
+  transform: rotate(-25deg) scale(0);
+  transform-origin: left bottom;
+}
+
+.final-sunflower.is-growing { opacity: .38; }
+.final-sunflower.is-growing .final-sunflower__stem { animation: finalStem 2s var(--ease-out) both; }
+.final-sunflower.is-growing .final-sunflower__head { animation: finalFlower 1.5s var(--ease-out) 1.65s both; }
+.final-sunflower.is-growing .final-sunflower__leaf { animation: finalLeaf 1s var(--ease-out) 1.15s both; }
+
+.scene--final-dawn.is-settled .final-dawn-content {
+  opacity: 0;
+  filter: blur(3px);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.final-signature {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  padding: calc(var(--safe-top) + 2rem) var(--page-gutter) calc(var(--safe-bottom) + 1rem);
+  align-content: center;
+  justify-items: center;
+  gap: .35rem;
+  color: #fff2cc;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(.45rem);
+  transition: opacity 2.2s ease, visibility 2.2s ease, transform 2.8s var(--ease-out);
+}
+
+.final-signature.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.final-signature__flower {
+  width: 3.8rem;
+  aspect-ratio: 1;
+  margin-bottom: .7rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #533319 0 21%, transparent 22%),
+    repeating-conic-gradient(#f2ba30 0 10deg, #d88a16 11deg 18deg, #f5c944 19deg 28deg);
+  filter: drop-shadow(0 0 1rem rgba(246, 190, 56, .22));
+  mask: radial-gradient(circle, #000 0 22%, transparent 23% 30%, #000 31% 58%, transparent 59%);
+}
+
+.final-signature p {
+  color: rgba(255, 246, 222, .78);
+  font-size: .82rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.final-signature h2 {
+  max-width: 20ch;
+  color: #fff5d8;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 9vw, 4.2rem);
+  font-weight: 500;
+  line-height: .98;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.final-signature > span:last-child {
+  margin-top: .25rem;
+  color: rgba(255, 242, 211, .8);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-style: italic;
+}
+
+@keyframes farewellStarToHorizon {
+  0% { opacity: 0; transform: translate3d(0, -1rem, 0) scale(.65); }
+  18% { opacity: 1; }
+  72% { opacity: 1; }
+  100% { opacity: .18; transform: translate3d(-28vw, 47vh, 0) scale(1.15); }
+}
+
+@keyframes finalStem {
+  from { transform: translateX(-50%) scaleY(0); }
+  to { transform: translateX(-50%) scaleY(1); }
+}
+
+@keyframes finalFlower {
+  from { opacity: 0; transform: scale(.15) rotate(-14deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes finalLeaf {
+  from { opacity: 0; transform: rotate(-25deg) scale(0); }
+  to { opacity: 1; transform: rotate(-25deg) scale(1); }
+}
+
+html.is-previewing .scene { transition: none; }
+
+@media (max-width: 480px) {
+  .scene {
+    padding-top: calc(var(--safe-top) + 2.75rem);
+    padding-bottom: calc(var(--safe-bottom) + .72rem);
+  }
+
+  .display-title {
+    max-width: 16ch;
+    font-size: clamp(2.05rem, 9.5vw, 2.8rem);
+  }
+
+  .farewell-memories-content > .scene__title {
+    max-width: 15ch;
+    font-size: clamp(1.6rem, 7.1vw, 2.15rem);
+  }
+
+  .farewell-memories-content .constellation-stage {
+    min-height: min(68dvh, 34rem);
+    grid-template-rows: 4.9rem minmax(12.5rem, 1fr) auto auto;
+  }
+
+  .farewell-memories-content .constellation {
+    width: min(88vw, 25rem);
+    height: min(40dvh, 21rem);
+  }
+
+  .farewell-memories-content .star__word {
+    max-width: 7.7rem;
+    font-size: .69rem;
+  }
+
+  .sorry-content .eyebrow,
+  .cliff-content .eyebrow { display: none; }
+
+  .sorry-stage,
+  .decision-stage {
+    min-height: min(69dvh, 34rem);
+  }
+
+  .sorry-copy,
+  .decision-stage .narrative-stage__copy {
+    min-height: min(31dvh, 15rem);
+  }
+
+  .sorry-copy .narrative-line,
+  .decision-stage .narrative-line {
+    font-size: clamp(1.05rem, 4.85vw, 1.45rem);
+  }
+
+  .flowers-content {
+    padding-top: .45rem;
+  }
+
+  .flowers-stage {
+    min-height: min(61dvh, 31rem);
+  }
+
+  .flowers-stage .narrative-stage__copy {
+    min-height: min(25dvh, 12rem);
+  }
+
+  .flower-field { height: 42%; }
+
+  .cliff-content { align-content: center; }
+  .cliff-stage { min-height: min(69dvh, 35rem); }
+  .cliff-copy { min-height: min(35dvh, 17rem); }
+
+  .cliff-copy .narrative-line {
+    font-size: clamp(1.04rem, 4.75vw, 1.38rem);
+    text-align: center;
+  }
+
+  .cliff-stage,
+  .cliff-copy { justify-items: center; }
+  .cliff-next { justify-self: center; }
+
+  .final-dawn-content { align-content: center; }
+  .final-dawn-stage { min-height: min(70dvh, 35rem); }
+  .final-dawn-stage .dawn-copy { min-height: min(29dvh, 14rem); }
+
+  .final-dawn-stage .narrative-line {
+    font-size: clamp(1.05rem, 4.75vw, 1.42rem);
+  }
+
+  .final-sunflower {
+    width: 4.7rem;
+    height: 7.8rem;
+    opacity: .32;
+  }
+
+  .final-sunflower__head { width: 4.7rem; }
+  .final-sunflower__stem { height: 4.4rem; }
+}
+
+@media (max-height: 810px) and (max-width: 480px) {
+  .scene { padding-top: calc(var(--safe-top) + 2.45rem); }
+  .scene__title--small { font-size: clamp(1.5rem, 6.6vw, 2rem); }
+  .farewell-memories-content .constellation-stage { min-height: min(67dvh, 31rem); }
+  .sorry-stage,
+  .decision-stage,
+  .cliff-stage,
+  .final-dawn-stage { min-height: min(67dvh, 31rem); }
+  .flowers-stage { min-height: min(58dvh, 28rem); }
+  .narrative-stage__copy > *,
+  .narrative-line { line-height: 1.18; }
+}
+
+@media (min-width: 760px) {
+  .sorry-stage,
+  .decision-stage,
+  .flowers-stage,
+  .final-dawn-stage { width: min(100%, 40rem); }
+
+  .farewell-memories-content { align-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene--cliff.is-looking-up .cliff-scape,
+  .final-signature,
+  .farewell-card {
+    transform: none !important;
+  }
+
+  .scene--final-dawn.is-awakening .dawn-golden-star,
+  .final-sunflower.is-growing .final-sunflower__stem,
+  .final-sunflower.is-growing .final-sunflower__head,
+  .final-sunflower.is-growing .final-sunflower__leaf {
+    animation-duration: .01ms !important;
+    animation-delay: 0ms !important;
+  }
+}
