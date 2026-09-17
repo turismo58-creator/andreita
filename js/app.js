@@ -16,8 +16,10 @@
       postBeat: 1500,
       introStar: 900,
       observe: 1400,
+      memoryObserve: 3400,
       flowersRest: 1500,
       dawnArrival: 2200,
+      entrySettle: 1150,
       focus: 80
     },
     profiles: {
@@ -54,35 +56,35 @@
       page(["Solo hay cosas que quisiera decirte una última vez…", "…de la forma más bonita que pude encontrar."], { profile: "intimate" })
     ],
     memories: [
-      page(["Gracias por permitirme conocerte."], { profile: "intimate" }),
+      page(["Gracias por permitirme conocerte."], { profile: "intimate", duration: 4200 }),
       page(["Por las conversaciones.", "Por las risas."], { profile: "normal" }),
       page(["Por los momentos bonitos."], { profile: "normal" }),
       page(["Quizá algunas cosas parecían pequeñas…", "…pero para mí nunca lo fueron."], { profile: "intimate" }),
-      page([line("Te quise.", "memory-emphasis")], { profile: "emotional" }),
-      page([line("Te quiero.", "memory-emphasis")], { profile: "key" }),
-      page(["Y probablemente una parte de mí te quiera durante mucho tiempo."], { profile: "intimate" })
+      page([line("Te quise.", "memory-emphasis")], { profile: "emotional", duration: 4200 }),
+      page([line("Te quiero.", "memory-emphasis")], { profile: "key", duration: 5200 }),
+      page(["Y probablemente una parte de mí te quiera durante mucho tiempo."], { profile: "intimate", postBeatDelay: 3000 })
     ],
     sorry: [
       page(["Andrea…"], { profile: "emotional" }),
       page(["También necesito decirte algo sin esconderlo detrás de esta página."], { profile: "emotional" }),
-      page([line("Lo siento.", "sorry-emphasis")], { profile: "key" }),
-      page(["Nunca fue mi intención lastimarte.", "Pero sé que eso no cambia lo que pasó."], { profile: "emotional" }),
-      page(["No supe manejar la situación.", "Y terminé causando una herida que no merecías."], { profile: "emotional" }),
+      page([line("Lo siento.", "sorry-emphasis")], { profile: "key", duration: 5200 }),
+      page(["Nunca fue mi intención lastimarte.", "Pero sé que eso no cambia lo que pasó."], { profile: "emotional", duration: 4300 }),
+      page(["No supe manejar la situación.", "Y terminé causando una herida que no merecías."], { profile: "emotional", duration: 4500 }),
       page(["No quiero justificarme.", "No quiero hacer como si no hubiera ocurrido."], { profile: "emotional" }),
       page(["Solo quiero pedirte perdón."], { profile: "emotional" }),
-      page([line("Perdón.", "sorry-emphasis")], { profile: "key" }),
+      page([line("Perdón.", "sorry-emphasis")], { profile: "key", duration: 5200 }),
       page(["Sé que hay heridas que por momentos pueden dejar de doler…", "…pero perdonar es diferente."], { profile: "emotional" }),
-      page(["Y entiendo si no puedes hacerlo."], { profile: "emotional" })
+      page(["Y entiendo si no puedes hacerlo."], { profile: "emotional", postBeatDelay: 2800 })
     ],
     decision: [
       page(["Y precisamente porque entiendo eso…"], { profile: "intimate" }),
-      page([line("decidí alejarme.", "decision-emphasis")], { profile: "key" }),
-      page(["No porque haya dejado de sentir."], { profile: "emotional" }),
+      page([line("decidí alejarme.", "decision-emphasis")], { profile: "key", duration: 5200 }),
+      page(["No porque haya dejado de sentir."], { profile: "emotional", duration: 4200 }),
       page(["Sino porque también creo que querer a alguien significa saber cuándo dejar de insistir."], { profile: "emotional" }),
       page(["No quiero presionarte.", "No quiero incomodarte."], { profile: "emotional" }),
       page(["No quiero convertir mi dolor en una carga para ti."], { profile: "emotional" }),
-      page(["Quiero respetar tu tranquilidad."], { profile: "emotional" }),
-      page(["Así que después de hoy…", "…voy a dejarte tranquila."], { profile: "key" }),
+      page(["Quiero respetar tu tranquilidad."], { profile: "emotional", duration: 4500 }),
+      page(["Así que después de hoy…", "…voy a dejarte tranquila."], { profile: "key", duration: 5200 }),
       page(["Si algún día necesitas algo…", "…y está en mis manos ayudarte…"], { profile: "intimate" }),
       page(["…lo haré con todo el cariño.", "Sin esperar nada a cambio."], { profile: "intimate" })
     ],
@@ -90,28 +92,28 @@
       page(["El 21 es el Día de las Flores Amarillas."], { profile: "intimate" }),
       page(["Pero las tuyas llegaron antes."], { profile: "intimate" }),
       page(["Y esta vez no son una promesa.", "No son una manera de pedirte que te quedes."], { profile: "emotional" }),
-      page([line("Son mi regalo de despedida.", "farewell-emphasis")], { profile: "key" }),
+      page([line("Son mi regalo de despedida.", "farewell-emphasis")], { profile: "key", duration: 5200 }),
       page(["En ellas queda un poquito…", "…de todo el cariño que te tuve…"], { profile: "intimate" }),
       page(["…que te tengo…", "…y que probablemente llevaré conmigo durante mucho tiempo."], { profile: "intimate" }),
-      page(["Esta será nuestra última cita especial."], { profile: "emotional" }),
+      page(["Esta será nuestra última cita especial."], { profile: "emotional", duration: 5200 }),
       page(["Y solo quería que fuera bonita."], { profile: "intimate" })
     ],
     cliff: [
       page(["Andrea…"], { profile: "contemplative" }),
       page(["Antes de terminar…"], { profile: "contemplative" }),
-      page(["de verdad lo siento."], { profile: "emotional" }),
+      page(["de verdad lo siento."], { profile: "emotional", duration: 4500 }),
       page(["Por lo que hice.", "Y por todo lo que terminó desmoronándose después."], { profile: "contemplative" }),
       page(["No espero que unas palabras borren esa herida."], { profile: "contemplative" }),
       page(["Quizá solo el tiempo sepa qué puede pasar con ella."], { profile: "contemplative" }),
       page(["Pero quería pedirte perdón una última vez."], { profile: "contemplative" }),
-      page([line("Porque te quiero.", "cliff-emphasis")], { profile: "key" }),
+      page([line("Porque te quiero.", "cliff-emphasis")], { profile: "key", duration: 5000 }),
       page(["Y sí…"], { profile: "contemplative" }),
-      page(["probablemente me duela durante mil y una noches."], { profile: "emotional" }),
-      page([line("Pero ninguna de esas noches te obliga a volver.", "cliff-important")], { profile: "key" }),
+      page(["probablemente me duela durante mil y una noches."], { profile: "emotional", duration: 5000 }),
+      page([line("Pero ninguna de esas noches te obliga a volver.", "cliff-important")], { profile: "key", duration: 5500 }),
       page(["No quiero convertir mi dolor en una carga para ti."], { profile: "contemplative" }),
-      page(["Solo espero que algún día puedas perdonarme."], { profile: "contemplative" }),
-      page(["No puedo cambiar aquella noche."], { profile: "contemplative" }),
-      page(["Pero sí puedo decidir quién quiero ser en todas las que vienen después."], { profile: "contemplative", postBeatDelay: 3000 })
+      page(["Solo espero que algún día puedas perdonarme."], { profile: "contemplative", duration: 5000 }),
+      page(["No puedo cambiar aquella noche."], { profile: "contemplative", duration: 4000 }),
+      page(["Pero sí puedo decidir quién quiero ser en todas las que vienen después."], { profile: "contemplative", duration: 5500, clearAfter: true, postClearDelay: 2800 })
     ],
     dawn: [
       page(["Si Dios, el tiempo y la vida deciden cruzarnos otra vez…"], { profile: "intimate" }),
@@ -122,12 +124,12 @@
       page(["Pero eso será decisión del tiempo."], { profile: "emotional" }),
       page(["Hoy solo quiero despedirme bonito."], { profile: "emotional" }),
       page(["Porque aunque las cosas no terminaron como imaginé…", "…haberte conocido es algo que sí agradezco."], { profile: "emotional" }),
-      page(["Cuídate mucho, Andrea."], { profile: "emotional" }),
-      page(["De verdad deseo que seas muy feliz."], { profile: "key" }),
-      page(["No todos los amores terminan quedándose."], { profile: "contemplative" }),
-      page(["Algunos también aman sabiendo cuándo dejar ir."], { profile: "contemplative" }),
-      page(["Gracias por haber sido parte de mi noche."], { profile: "emotional" }),
-      page([line("Que la vida te regale amaneceres bonitos, Andrea. 🌻", "final-wish")], { profile: "key", postBeatDelay: 4000 })
+      page(["Cuídate mucho, Andrea."], { profile: "emotional", duration: 4000 }),
+      page(["De verdad deseo que seas muy feliz."], { profile: "key", duration: 4800 }),
+      page(["No todos los amores terminan quedándose."], { profile: "contemplative", duration: 4000 }),
+      page(["Algunos también aman sabiendo cuándo dejar ir."], { profile: "contemplative", duration: 4500 }),
+      page(["Gracias por haber sido parte de mi noche."], { profile: "emotional", duration: 4500 }),
+      page([line("Que la vida te regale amaneceres bonitos, Andrea. 🌻", "final-wish")], { profile: "key", duration: 5200 })
     ]
   };
 
@@ -158,6 +160,7 @@
       });
     }
     readingDelay(pageData) {
+      if (pageData.duration) return Math.max(0, pageData.duration - CONFIG.timings.entrySettle);
       const profile = CONFIG.profiles[pageData.profile] || CONFIG.profiles.normal;
       const words = pageData.lines.reduce((total, item) => total + item.text.trim().split(/\s+/).length, 0);
       return clamp((words / profile.wpm) * 60000, profile.min, profile.max);
@@ -238,9 +241,19 @@
           await this.showPage(pageData, signal);
           if (this.index === this.pages.length - 1) {
             this.index += 1;
-            await pacer.wait(pageData.postBeatDelay || CONFIG.timings.postBeat, signal);
+            if (pageData.duration) {
+              await pacer.wait(CONFIG.timings.entrySettle, signal);
+              await pacer.wait(pacer.readingDelay(pageData), signal);
+            } else {
+              await pacer.wait(pageData.postBeatDelay || CONFIG.timings.postBeat, signal);
+            }
+            if (pageData.clearAfter) {
+              await this.hidePage(signal);
+              await pacer.wait(pageData.postClearDelay || CONFIG.timings.postBeat, signal);
+            }
             break;
           }
+          if (pageData.duration) await pacer.wait(CONFIG.timings.entrySettle, signal);
           await pacer.wait(pacer.readingDelay(pageData), signal);
           this.index += 1;
           await this.hidePage(signal);
@@ -417,7 +430,7 @@
       qs("#constellation").classList.add("is-complete");
       qs("#memories-instruction").classList.add("is-hidden");
       const signal = pacer.createScope("scene:memories");
-      pacer.schedule(() => { qs("#constellation").classList.add("is-observed"); sequences.memories.start(); }, CONFIG.timings.observe, signal);
+      pacer.schedule(() => { qs("#constellation").classList.add("is-observed"); sequences.memories.start(); }, CONFIG.timings.memoryObserve, signal);
     }
   };
 
@@ -460,7 +473,7 @@
         signature.setAttribute("aria-hidden", "false");
         signature.classList.add("is-visible");
         audio.cue("dawn");
-      }, 1800, signal);
+      }, 400, signal);
     }
   };
 
@@ -536,7 +549,7 @@
   const showPreview = () => {
     if (!PREVIEW) return;
     document.documentElement.classList.add("is-previewing");
-    const target = PREVIEW === "final" ? "dawn" : PREVIEW;
+    const target = PREVIEW === "final" ? "dawn" : PREVIEW === "memories-complete" ? "memories" : PREVIEW;
     const index = sceneManager.scenes.findIndex((scene) => scene.dataset.scene === target);
     if (index < 0) return;
     if (index > 1) {
@@ -544,6 +557,7 @@
       qs("#constellation").classList.add("is-complete");
     }
     sceneManager.hydrate(index);
+    if (PREVIEW === "memories-complete") memories.stars.forEach((star) => star.click());
     if (PREVIEW === "final") {
       pacer.cancel("scene:dawn");
       pacer.cancel("sequence:dawn");
@@ -566,7 +580,7 @@
     const assert = (condition, message) => { if (!condition) throw new Error(message); };
     try {
       assert(sceneManager.scenes.length === 7, "The experience must contain seven moments.");
-      assert(memories.stars.length === 4, "The memories moment must contain four stars.");
+      assert(memories.stars.length === 5, "The memories moment must contain five stars.");
       await clickWhenReady("#intro-star", signal);
       await clickWhenReady("#intro-next", signal);
       memories.stars.forEach((star) => star.click());
